@@ -18,11 +18,22 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function initSession() {
+      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+        await supabase.auth.getSessionFromUrl().catch(() => {})
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
       setSession(session)
       if (session?.user) loadProfile(session.user.id)
       setLoading(false)
-    })
+
+      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+      }
+    }
+
+    initSession()
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
@@ -39,7 +50,10 @@ export function AuthProvider({ children }) {
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: {
+        redirectTo:
+          import.meta.env.VITE_SUPABASE_REDIRECT_URL || window.location.origin
+      }
     })
   }
 
