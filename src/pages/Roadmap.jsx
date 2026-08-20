@@ -26,11 +26,11 @@ const RELEASES = [
     status: 'next',
     blurb: 'Small things that get used every single day.',
     items: [
+      'Mobile polish + responsive navigation drawer & touch cards',
+      'CSV export of filtered team dashboard & personal entries',
       'Start/stop timer button, not just manual entry',
       'Edit full entry (date, project, duration) in My Entries',
-      'CSV export of filtered dashboard data',
-      'Toast notifications instead of inline text',
-      'Mobile polish + installable PWA'
+      'Toast notifications instead of inline text'
     ]
   },
   {
@@ -92,25 +92,27 @@ export default function Roadmap() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="font-display text-2xl font-semibold text-base-100 mb-1">Roadmap</h1>
-      <p className="text-sm text-base-400 mb-8">
-        Where TimeLog is today, and what's planned for the next three releases. Tick items off as you ship them —
-        progress is saved on this device.
-      </p>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div>
+        <h1 className="font-display text-xl sm:text-2xl font-semibold text-base-100 mb-1">Roadmap</h1>
+        <p className="text-xs sm:text-sm text-base-400">
+          Where TimeLog is today, and what's planned for the upcoming releases. Tick items off as you ship them —
+          progress is saved locally on this device.
+        </p>
+      </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:gap-6">
         {RELEASES.map((release) => {
           const style = STATUS_STYLE[release.status]
           const doneCount = release.items.filter((_, i) => checked[`${release.id}:${i}`]).length
           const isShippedRelease = release.status === 'shipped'
 
           return (
-            <div key={release.id} className="card p-5">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2.5">
+            <div key={release.id} className="card p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2.5 flex-wrap">
                   <span
-                    className="text-xs font-mono px-2 py-0.5 rounded-full border"
+                    className="text-xs font-mono px-2.5 py-0.5 rounded-full border font-medium"
                     style={{ color: style.color, borderColor: `${style.color}55`, background: `${style.color}14` }}
                   >
                     {style.label}
@@ -119,25 +121,27 @@ export default function Roadmap() {
                 </div>
                 {!isShippedRelease && (
                   <div className="text-xs text-base-400 font-mono">
-                    {doneCount}/{release.items.length}
+                    Progress: <strong className="text-accent font-normal">{doneCount}/{release.items.length}</strong>
                   </div>
                 )}
               </div>
               <p className="text-xs text-base-400 mb-4">{release.blurb}</p>
 
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-1.5">
                 {release.items.map((item, i) => {
                   const key = `${release.id}:${i}`
                   const isChecked = isShippedRelease ? true : !!checked[key]
                   return (
                     <li key={key}>
-                      <label className={`flex items-start gap-2.5 text-sm ${isShippedRelease ? 'cursor-default' : 'cursor-pointer'}`}>
+                      <label className={`flex items-start gap-3 p-2 rounded-xl text-xs sm:text-sm transition-colors ${
+                        isShippedRelease ? 'cursor-default' : 'cursor-pointer hover:bg-base-850/60'
+                      }`}>
                         <input
                           type="checkbox"
                           checked={isChecked}
                           disabled={isShippedRelease}
                           onChange={() => toggle(release.id, i)}
-                          className="mt-0.5 accent-accent w-4 h-4 rounded"
+                          className="mt-0.5 accent-accent w-4 h-4 rounded shrink-0 cursor-pointer"
                         />
                         <span className={isChecked ? 'text-base-400 line-through' : 'text-base-200'}>{item}</span>
                       </label>

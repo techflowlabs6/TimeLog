@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import StatCard from '../components/StatCard'
 import HoursPieChart from '../components/HoursPieChart'
 import PersonProjectBarChart from '../components/PersonProjectBarChart'
+import { exportToCSV } from '../lib/exportUtils'
 
 function startOfWeek() {
   const d = new Date()
@@ -106,60 +107,99 @@ export default function Dashboard() {
 
   const fmtH = (m) => (m / 60).toFixed(1) + 'h'
 
+  function handleExportCSV() {
+    const headers = [
+      { key: 'date', label: 'Date' },
+      { key: 'person', label: 'Team Member' },
+      { key: 'project', label: 'Project' },
+      { key: 'hours', label: 'Hours' },
+      { key: 'startTime', label: 'Start Time' },
+      { key: 'endTime', label: 'End Time' },
+      { key: 'notes', label: 'Notes' }
+    ]
+
+    const exportRows = filtered.map((e) => ({
+      date: e.entry_date,
+      person: profileMap[e.user_id]?.full_name || profileMap[e.user_id]?.email || 'Unknown',
+      project: projectMap[e.project_id]?.name || 'Unknown',
+      hours: (e.duration_minutes / 60).toFixed(2),
+      startTime: e.start_time || 'N/A',
+      endTime: e.end_time || 'N/A',
+      notes: e.notes || ''
+    }))
+
+    const dateStr = new Date().toISOString().slice(0, 10)
+    exportToCSV(`timelog_team_report_${dateStr}`, headers, exportRows)
+  }
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-base-100">Team Dashboard</h1>
-          <p className="text-sm text-base-400 mt-1">Hours across every project and every person, in real time.</p>
+          <h1 className="font-display text-xl sm:text-2xl font-semibold text-base-100">Team Dashboard</h1>
+          <p className="text-xs sm:text-sm text-base-400 mt-1">Hours across every project and team member, in real time.</p>
         </div>
+        <button
+          onClick={handleExportCSV}
+          disabled={filtered.length === 0}
+          className="inline-flex items-center justify-center gap-2 bg-base-800 hover:bg-base-700 text-accent hover:text-white border border-accent/20 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors disabled:opacity-40"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Export CSV
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-end gap-3 mb-6 card p-4">
-        <div>
-          <div className="label-eyebrow mb-1">From</div>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="bg-base-850 border border-base-700 rounded-lg px-3 py-2 text-sm text-base-100 focus:border-accent outline-none"
-          />
+      {/* Filters Card */}
+      <div className="card p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 items-end">
+          <div>
+            <div className="label-eyebrow mb-1">From</div>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none"
+            />
+          </div>
+          <div>
+            <div className="label-eyebrow mb-1">To</div>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none"
+            />
+          </div>
+          <div>
+            <div className="label-eyebrow mb-1">Project</div>
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none"
+            >
+              <option value="all">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          {(dateFrom || dateTo || projectFilter !== 'all') && (
+            <div className="flex items-center">
+              <button
+                onClick={() => { setDateFrom(''); setDateTo(''); setProjectFilter('all') }}
+                className="w-full sm:w-auto text-xs text-base-400 hover:text-accent transition-colors px-3 py-2 border border-base-700 rounded-xl"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
         </div>
-        <div>
-          <div className="label-eyebrow mb-1">To</div>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="bg-base-850 border border-base-700 rounded-lg px-3 py-2 text-sm text-base-100 focus:border-accent outline-none"
-          />
-        </div>
-        <div>
-          <div className="label-eyebrow mb-1">Project</div>
-          <select
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="bg-base-850 border border-base-700 rounded-lg px-3 py-2 text-sm text-base-100 focus:border-accent outline-none"
-          >
-            <option value="all">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-        {(dateFrom || dateTo || projectFilter !== 'all') && (
-          <button
-            onClick={() => { setDateFrom(''); setDateTo(''); setProjectFilter('all') }}
-            className="text-xs text-base-400 hover:text-accent transition-colors px-3 py-2"
-          >
-            Clear filters
-          </button>
-        )}
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <StatCard label="Total hours (all-time)" value={fmtH(totalMinutesAllTime)} />
         <StatCard label="Hours this week" value={fmtH(totalMinutesWeek)} />
         <StatCard label="Hours this month" value={fmtH(totalMinutesMonth)} />
@@ -167,15 +207,15 @@ export default function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-base-400 font-mono">loading data…</div>
+        <div className="text-sm text-base-400 font-mono py-8 text-center card">loading dashboard data…</div>
       ) : (
-        <>
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <HoursPieChart title="Hours by project" data={byProject} />
             <HoursPieChart title="Hours by person" data={byPerson} />
           </div>
           <PersonProjectBarChart rows={barRows} projects={projects} />
-        </>
+        </div>
       )}
     </div>
   )
