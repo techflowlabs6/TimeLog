@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import MobileHeader from './components/MobileHeader'
@@ -10,12 +11,35 @@ import AdminProjects from './pages/AdminProjects'
 import Roadmap from './pages/Roadmap'
 import { useAuth } from './context/AuthContext'
 
+const SIDEBAR_KEY = 'timelog_sidebar_collapsed_v1'
+
 function Shell({ children }) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_KEY) === 'true'
+      setCollapsed(saved)
+    } catch {
+      setCollapsed(false)
+    }
+  }, [])
+
+  function toggleSidebar() {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(SIDEBAR_KEY, String(next))
+      } catch {}
+      return next
+    })
+  }
+
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-base-950 text-base-100 overflow-x-hidden">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-base-950 text-base-100 overflow-x-hidden">
       <MobileHeader />
-      <Sidebar />
-      <main className="flex-1 px-3.5 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 max-w-[1400px] w-full min-w-0 mx-auto overflow-x-hidden">
+      <Sidebar collapsed={collapsed} onToggle={toggleSidebar} />
+      <main className="flex-1 px-3.5 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 max-w-[1500px] w-full min-w-0 mx-auto overflow-x-hidden transition-all duration-300">
         {children}
       </main>
     </div>

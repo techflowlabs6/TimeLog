@@ -14,12 +14,12 @@ export default function MobileHeader() {
   const [isOpen, setIsOpen] = useState(false)
   const location = useLocation()
 
-  // Close slide-over menu whenever path changes
+  // Close drawer whenever path changes
   useEffect(() => {
     setIsOpen(false)
   }, [location.pathname])
 
-  // Prevent scroll when menu is open
+  // Prevent scroll when drawer is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -37,13 +37,14 @@ export default function MobileHeader() {
 
   return (
     <>
-      {/* Top Mobile Navbar */}
-      <header className="md:hidden sticky top-0 z-40 bg-base-950/95 backdrop-blur-md border-b border-base-800 px-4 py-3 flex items-center justify-between">
+      {/* Top Header Bar for Mobile & Tablet (< 1024px) */}
+      <header className="lg:hidden sticky top-0 z-40 bg-base-950/95 backdrop-blur-md border-b border-base-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsOpen(true)}
-            className="p-2 -ml-1 text-base-300 hover:text-base-100 hover:bg-base-850 rounded-xl transition-colors active:scale-95"
+            className="p-2 -ml-1.5 text-base-300 hover:text-base-100 hover:bg-base-850 rounded-xl transition-colors active:scale-95 border border-base-700/60"
             aria-label="Open Navigation Menu"
+            title="Open Navigation Menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -66,7 +67,7 @@ export default function MobileHeader() {
 
       {/* Slide-over Drawer Overlay */}
       {isOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
+        <div className="lg:hidden fixed inset-0 z-50 flex">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/80 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
@@ -94,14 +95,14 @@ export default function MobileHeader() {
                 </button>
               </div>
 
-              <nav className="flex flex-col gap-1">
+              <nav className="flex flex-col gap-1.5">
                 {links.map((l) => (
                   <NavLink
                     key={l.to}
                     to={l.to}
                     end={l.to === '/'}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
+                      `flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
                         isActive
                           ? 'bg-accent/10 text-accent border border-accent/20 shadow-xs'
                           : 'text-base-300 hover:text-base-100 hover:bg-base-850 border border-transparent'
@@ -116,7 +117,7 @@ export default function MobileHeader() {
                   <NavLink
                     to="/admin/projects"
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
+                      `flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-medium transition-all ${
                         isActive
                           ? 'bg-accent/10 text-accent border border-accent/20 shadow-xs'
                           : 'text-base-300 hover:text-base-100 hover:bg-base-850 border border-transparent'

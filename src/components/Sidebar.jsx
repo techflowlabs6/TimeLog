@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -8,71 +9,106 @@ const links = [
   { to: '/roadmap', label: 'Roadmap', icon: '↗' }
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, onToggle }) {
   const { profile, isAdmin, signOut } = useAuth()
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 h-screen sticky top-0 flex-col border-r border-base-700 bg-base-950/60 px-5 py-6">
-      <div className="mb-10">
-        <div className="font-display font-semibold text-xl tracking-tight text-base-100">
-          Time<span className="text-accent">Log</span>
-        </div>
-        <div className="label-eyebrow mt-1">team hours, tracked</div>
+    <aside
+      className={`hidden lg:flex shrink-0 h-screen sticky top-0 flex-col border-r border-base-700 bg-base-950/80 backdrop-blur-md transition-all duration-300 z-30 ${
+        collapsed ? 'w-16 px-2 py-5' : 'w-64 px-5 py-6'
+      }`}
+    >
+      {/* Header & Collapse Toggle Button */}
+      <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} mb-8`}>
+        {!collapsed && (
+          <div>
+            <div className="font-display font-bold text-xl tracking-tight text-base-100">
+              Time<span className="text-accent">Log</span>
+            </div>
+            <div className="label-eyebrow text-[10px] mt-0.5">team hours, tracked</div>
+          </div>
+        )}
+
+        <button
+          onClick={onToggle}
+          className="p-2 text-base-400 hover:text-base-100 hover:bg-base-800 rounded-xl transition-colors focus:outline-none"
+          title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          aria-label={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+        >
+          <svg className={`w-5 h-5 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      {/* Nav Links */}
+      <nav className="flex flex-col gap-1.5 flex-1">
         {links.map((l) => (
           <NavLink
             key={l.to}
             to={l.to}
             end={l.to === '/'}
+            title={collapsed ? l.label : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                collapsed ? 'justify-center px-0' : ''
+              } ${
                 isActive
-                  ? 'bg-accent/10 text-accent border border-accent/20'
+                  ? 'bg-accent/10 text-accent border border-accent/20 shadow-xs'
                   : 'text-base-400 hover:text-base-100 hover:bg-base-800/60 border border-transparent'
               }`
             }
           >
-            <span className="w-4 text-center">{l.icon}</span>
-            {l.label}
+            <span className="w-5 text-center text-base shrink-0">{l.icon}</span>
+            {!collapsed && <span className="truncate">{l.label}</span>}
           </NavLink>
         ))}
+
         {isAdmin && (
           <NavLink
             to="/admin/projects"
+            title={collapsed ? 'Projects (Admin)' : undefined}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                collapsed ? 'justify-center px-0' : ''
+              } ${
                 isActive
-                  ? 'bg-accent/10 text-accent border border-accent/20'
+                  ? 'bg-accent/10 text-accent border border-accent/20 shadow-xs'
                   : 'text-base-400 hover:text-base-100 hover:bg-base-800/60 border border-transparent'
               }`
             }
           >
-            <span className="w-4 text-center">⚙</span>
-            Projects (admin)
+            <span className="w-5 text-center text-base shrink-0">⚙</span>
+            {!collapsed && <span className="truncate">Projects (admin)</span>}
           </NavLink>
         )}
       </nav>
 
-      <div className="mt-auto pt-6 border-t border-base-700">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-accent/20 text-accent flex items-center justify-center font-mono text-xs font-semibold shrink-0">
+      {/* User Profile & Sign Out */}
+      <div className="pt-4 border-t border-base-800">
+        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} mb-3`}>
+          <div className="w-8 h-8 rounded-full bg-accent/20 text-accent flex items-center justify-center font-mono text-xs font-semibold border border-accent/30 shrink-0">
             {(profile?.full_name || profile?.email || '?').slice(0, 1).toUpperCase()}
           </div>
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-base-100 truncate">{profile?.full_name || 'Unnamed'}</div>
-            <div className="text-xs text-base-400 truncate">{profile?.role || 'Member'}</div>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-base-100 truncate">{profile?.full_name || 'Member'}</div>
+              <div className="text-xs text-base-400 truncate">{profile?.role || 'Member'}</div>
+            </div>
+          )}
         </div>
+
         <button
           onClick={signOut}
-          className="w-full flex items-center gap-2 text-left text-sm text-base-400 hover:text-red-400 transition-colors px-3 py-2 rounded-lg hover:bg-base-800/60"
+          title={collapsed ? 'Sign Out' : undefined}
+          className={`w-full flex items-center text-left text-xs font-medium text-base-400 hover:text-red-400 transition-colors py-2 rounded-xl hover:bg-base-800/60 ${
+            collapsed ? 'justify-center px-0' : 'px-3 gap-2'
+          }`}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          Sign out
+          {!collapsed && <span>Sign out</span>}
         </button>
       </div>
     </aside>
