@@ -67,16 +67,16 @@ export default function MyLog() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-xl sm:text-2xl font-semibold text-base-100">My Entries</h1>
-          <p className="text-xs sm:text-sm text-base-400 mt-1">Everything you've logged. Edit notes or remove a mistaken entry.</p>
+          <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-base-100">My Entries</h1>
+          <p className="text-xs sm:text-sm text-base-400 mt-0.5">Edit or remove your logged time entries.</p>
         </div>
         <button
           onClick={handleExportCSV}
           disabled={entries.length === 0}
-          className="inline-flex items-center justify-center gap-2 bg-base-800 hover:bg-base-700 text-accent hover:text-white border border-accent/20 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors disabled:opacity-40"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-base-850 hover:bg-base-800 text-accent border border-accent/25 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 shadow-xs"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -86,80 +86,80 @@ export default function MyLog() {
       </div>
 
       {loading ? (
-        <div className="card p-8 text-center text-sm text-base-400 font-mono">loading entries…</div>
+        <div className="card p-8 text-center text-xs text-base-400 font-mono">loading entries…</div>
       ) : entries.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-base-400">
-          No entries logged yet. Head over to Log Time to add your first entry.
+        <div className="card p-8 text-center text-xs sm:text-sm text-base-400">
+          No time entries logged yet. Head to Log Time to record your first entry.
         </div>
       ) : (
         <>
           {/* Mobile Card List View (< 768px) */}
-          <div className="md:hidden flex flex-col gap-3.5">
+          <div className="md:hidden flex flex-col gap-3 min-w-0">
             {entries.map((entry) => {
               const project = projectMap[entry.project_id]
               const isEditing = editingId === entry.id
 
               return (
-                <div key={entry.id} className="card p-4 flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-base-850 border border-base-700 text-xs font-medium text-base-200">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: project?.color_hex || '#7c9eff' }} />
-                      {project?.name || 'Unknown'}
+                <div key={entry.id} className="card p-3.5 flex flex-col gap-2 min-w-0 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-base-850 border border-base-700 text-xs font-medium text-base-200 truncate max-w-[70%]">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: project?.color_hex || '#7c9eff' }} />
+                      <span className="truncate">{project?.name || 'Unknown'}</span>
                     </span>
-                    <span className="font-mono text-sm font-semibold text-accent">
+                    <span className="font-mono text-xs font-bold text-accent px-2 py-0.5 rounded bg-accent/10 border border-accent/20 shrink-0">
                       {(entry.duration_minutes / 60).toFixed(2)}h
                     </span>
                   </div>
 
-                  <div className="text-xs text-base-400 flex items-center justify-between border-b border-base-800 pb-2">
-                    <span>Date: <strong className="text-base-200 font-normal">{entry.entry_date}</strong></span>
+                  <div className="text-[11px] text-base-400 flex items-center justify-between font-mono py-1 border-y border-base-800/80 my-0.5">
+                    <span>Date: <strong className="text-base-200 font-medium">{entry.entry_date}</strong></span>
                     {entry.start_time && entry.end_time && (
-                      <span className="font-mono">{entry.start_time} - {entry.end_time}</span>
+                      <span>{entry.start_time} - {entry.end_time}</span>
                     )}
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     {isEditing ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2 mt-1">
                         <input
                           value={editNotes}
                           onChange={(e) => setEditNotes(e.target.value)}
                           placeholder="Edit notes…"
-                          className="w-full bg-base-850 border border-base-700 rounded-lg px-3 py-2 text-sm text-base-100 focus:border-accent outline-none"
+                          className="w-full bg-base-850 border border-base-700 rounded-lg px-2.5 py-2 text-xs text-base-100 focus:border-accent outline-none"
                         />
                         <div className="flex gap-2 justify-end">
                           <button
                             onClick={() => setEditingId(null)}
-                            className="px-3 py-1.5 text-xs text-base-400 hover:text-base-200 bg-base-800 rounded-lg"
+                            className="px-2.5 py-1 text-xs text-base-400 hover:text-base-200 bg-base-800 rounded-lg"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={() => saveEdit(entry.id)}
-                            className="px-3 py-1.5 text-xs font-medium text-base-950 bg-accent hover:bg-accent-soft rounded-lg"
+                            className="px-3 py-1 text-xs font-semibold text-base-950 bg-accent hover:bg-accent-soft rounded-lg"
                           >
                             Save
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs sm:text-sm text-base-300 italic">
+                      <p className="text-xs text-base-300 italic break-words">
                         {entry.notes ? `"${entry.notes}"` : 'No notes attached'}
                       </p>
                     )}
                   </div>
 
                   {!isEditing && (
-                    <div className="flex justify-end gap-3 pt-2 border-t border-base-800/60">
+                    <div className="flex justify-end gap-3 pt-1.5 border-t border-base-800/60">
                       <button
                         onClick={() => startEdit(entry)}
-                        className="text-xs text-base-400 hover:text-accent font-medium transition-colors px-2 py-1"
+                        className="text-xs text-base-400 hover:text-accent font-medium transition-colors px-1.5 py-0.5"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(entry.id)}
-                        className="text-xs text-base-400 hover:text-red-400 font-medium transition-colors px-2 py-1"
+                        className="text-xs text-base-400 hover:text-red-400 font-medium transition-colors px-1.5 py-0.5"
                       >
                         Delete
                       </button>

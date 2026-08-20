@@ -1,7 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import MobileHeader from './components/MobileHeader'
-import BottomNav from './components/BottomNav'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -13,13 +12,12 @@ import { useAuth } from './context/AuthContext'
 
 function Shell({ children }) {
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-base-950">
+    <div className="flex flex-col md:flex-row min-h-screen bg-base-950 text-base-100 overflow-x-hidden">
       <MobileHeader />
       <Sidebar />
-      <main className="flex-1 px-4 py-5 pb-20 sm:px-6 sm:py-6 md:pb-8 lg:px-8 lg:py-8 max-w-[1400px] w-full min-w-0 mx-auto overflow-x-hidden">
+      <main className="flex-1 px-3.5 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 max-w-[1400px] w-full min-w-0 mx-auto overflow-x-hidden">
         {children}
       </main>
-      <BottomNav />
     </div>
   )
 }
