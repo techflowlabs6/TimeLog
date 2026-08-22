@@ -14,7 +14,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   return (
     <aside
-      className={`hidden lg:flex shrink-0 h-screen sticky top-0 flex-col border-r border-base-700 bg-base-900/70 backdrop-blur-xl transition-all duration-300 z-30 ${
+      className={`hidden lg:flex shrink-0 h-screen sticky top-0 flex-col border-r border-base-700 bg-base-900/80 backdrop-blur-xl transition-all duration-300 z-30 overflow-y-auto ${
         collapsed ? 'w-16 px-2 py-5' : 'w-64 px-5 py-6'
       }`}
     >
