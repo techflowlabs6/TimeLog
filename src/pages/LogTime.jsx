@@ -63,43 +63,73 @@ export default function LogTime() {
         <p className="text-xs sm:text-sm text-base-400 mt-0.5">Record time spent on a project. Duration calculates automatically.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="card p-4 sm:p-6 flex flex-col gap-4 min-w-0 overflow-hidden">
+      <form onSubmit={handleSubmit} className="card p-5 sm:p-7 flex flex-col gap-4.5 min-w-0 overflow-hidden shadow-lg">
         <div>
-          <div className="label-eyebrow text-[10px] sm:text-xs mb-1.5">Project</div>
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            required
-            className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none appearance-none box-border"
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
+            <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span>Project</span>
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-base-400">
+              <svg className="w-4 h-4 text-accent/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </div>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              required
+              className="w-full min-w-0 bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl pl-9 pr-8 py-2.5 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors appearance-none cursor-pointer shadow-xs"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-base-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         </div>
 
         <div>
-          <div className="label-eyebrow text-[10px] sm:text-xs mb-1.5">Date</div>
-          <input
-            type="date"
-            value={entryDate}
-            onChange={(e) => setEntryDate(e.target.value)}
-            required
-            className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none box-border"
-          />
+          <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
+            <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>Date</span>
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-base-400">
+              <svg className="w-4 h-4 text-accent/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <input
+              type="date"
+              value={entryDate}
+              onChange={(e) => setEntryDate(e.target.value)}
+              onClick={(e) => e.target.showPicker?.()}
+              required
+              className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors shadow-xs cursor-pointer"
+            />
+          </div>
         </div>
 
         {/* Mode Selector */}
         <div>
-          <div className="label-eyebrow text-[10px] sm:text-xs mb-1.5">Entry Mode</div>
+          <div className="text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">Entry Mode</div>
           <div className="flex p-1 bg-base-850 rounded-xl border border-base-700 gap-1">
             <button
               type="button"
               onClick={() => setMode('range')}
-              className={`flex-1 text-xs py-2 rounded-lg font-medium transition-all ${
+              className={`flex-1 text-xs py-2 rounded-lg font-bold transition-all ${
                 mode === 'range' 
                   ? 'border border-accent/30 text-accent bg-accent/15 shadow-xs' 
-                  : 'text-base-400 hover:text-base-200'
+                  : 'text-base-400 hover:text-base-100'
               }`}
             >
               Start / End time
@@ -107,10 +137,10 @@ export default function LogTime() {
             <button
               type="button"
               onClick={() => setMode('manual')}
-              className={`flex-1 text-xs py-2 rounded-lg font-medium transition-all ${
+              className={`flex-1 text-xs py-2 rounded-lg font-bold transition-all ${
                 mode === 'manual' 
                   ? 'border border-accent/30 text-accent bg-accent/15 shadow-xs' 
-                  : 'text-base-400 hover:text-base-200'
+                  : 'text-base-400 hover:text-base-100'
               }`}
             >
               Manual duration
@@ -121,22 +151,38 @@ export default function LogTime() {
         {mode === 'range' ? (
           <div className="grid grid-cols-2 gap-3 min-w-0">
             <div>
-              <div className="label-eyebrow text-[10px] sm:text-xs mb-1.5">Start Time</div>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none box-border"
-              />
+              <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
+                <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Start Time</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  onClick={(e) => e.target.showPicker?.()}
+                  className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors shadow-xs cursor-pointer"
+                />
+              </div>
             </div>
             <div>
-              <div className="label-eyebrow text-[10px] sm:text-xs mb-1.5">End Time</div>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none box-border"
-              />
+              <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
+                <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>End Time</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  onClick={(e) => e.target.showPicker?.()}
+                  className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors shadow-xs cursor-pointer"
+                />
+              </div>
             </div>
           </div>
         ) : (

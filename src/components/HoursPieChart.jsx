@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { useTheme } from '../context/ThemeContext'
 
 function fmtHours(minutes) {
   return (minutes / 60).toFixed(1) + 'h'
@@ -8,6 +9,8 @@ function fmtHours(minutes) {
 export default function HoursPieChart({ title, data }) {
   const total = data.reduce((sum, d) => sum + d.minutes, 0)
   const [isMobile, setIsMobile] = useState(false)
+  const { theme } = useTheme()
+  const isLight = theme === 'light'
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640)
@@ -15,6 +18,11 @@ export default function HoursPieChart({ title, data }) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  const strokeColor = isLight ? '#ffffff' : '#0d1017'
+  const tooltipBg = isLight ? '#ffffff' : '#141823'
+  const tooltipBorder = isLight ? '#cbd5e1' : '#2d3750'
+  const tooltipText = isLight ? '#0f172a' : '#f8faff'
 
   return (
     <div className="card p-4 sm:p-5 flex flex-col justify-between min-w-0 overflow-hidden">
@@ -43,11 +51,20 @@ export default function HoursPieChart({ title, data }) {
                   paddingAngle={3}
                 >
                   {data.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} stroke="#0a0b0f" strokeWidth={2} />
+                    <Cell key={i} fill={entry.color} stroke={strokeColor} strokeWidth={2} />
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: '#161923', border: '1px solid #343b4f', borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{
+                    backgroundColor: tooltipBg,
+                    borderColor: tooltipBorder,
+                    borderRadius: 12,
+                    fontSize: 12,
+                    boxShadow: isLight ? '0 10px 25px -5px rgba(0,0,0,0.1)' : '0 10px 25px -5px rgba(0,0,0,0.5)',
+                    color: tooltipText
+                  }}
+                  itemStyle={{ color: tooltipText }}
+                  labelStyle={{ color: tooltipText, fontWeight: 600 }}
                   formatter={(value, name) => [fmtHours(value), name]}
                 />
               </PieChart>
@@ -58,9 +75,9 @@ export default function HoursPieChart({ title, data }) {
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 pt-3 border-t border-base-800/80">
             {data.map((item, idx) => (
               <div key={idx} className="inline-flex items-center gap-1.5 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
-                <span className="text-base-300 font-medium truncate max-w-[110px]">{item.name}:</span>
-                <span className="font-mono text-base-100">{fmtHours(item.minutes)}</span>
+                <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style={{ background: item.color }} />
+                <span className="text-base-400 font-medium truncate max-w-[110px]">{item.name}:</span>
+                <span className="font-mono text-base-100 font-semibold">{fmtHours(item.minutes)}</span>
               </div>
             ))}
           </div>

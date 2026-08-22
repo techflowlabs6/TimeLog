@@ -6,19 +6,19 @@ export default {
     extend: {
       colors: {
         base: {
-          950: '#0a0b0f',
-          900: '#111319',
-          850: '#161923',
-          800: '#1b1f2b',
-          700: '#242938',
-          600: '#343b4f',
-          400: '#8890a6',
-          200: '#c8cdda',
-          100: '#e9ebf2'
+          950: 'rgb(var(--base-950) / <alpha-value>)',
+          900: 'rgb(var(--base-900) / <alpha-value>)',
+          850: 'rgb(var(--base-850) / <alpha-value>)',
+          800: 'rgb(var(--base-800) / <alpha-value>)',
+          700: 'rgb(var(--base-700) / <alpha-value>)',
+          600: 'rgb(var(--base-600) / <alpha-value>)',
+          400: 'rgb(var(--base-400) / <alpha-value>)',
+          200: 'rgb(var(--base-200) / <alpha-value>)',
+          100: 'rgb(var(--base-100) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#7c9eff',
-          soft: '#5b7fe0'
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          soft: 'rgb(var(--accent-soft) / <alpha-value>)',
         }
       },
       fontFamily: {

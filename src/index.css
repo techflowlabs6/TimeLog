@@ -2,31 +2,129 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Dark / Night theme (Deep Obsidian & Neon Indigo) ─────── */
+:root {
+  --base-950: 7 9 14;        /* Deepest dark canvas #07090e */
+  --base-900: 13 16 23;      /* Surface card #0d1017 */
+  --base-850: 20 24 35;      /* Elevated surface / Input #141823 */
+  --base-800: 30 37 54;      /* Secondary border / Subtle line #1e2536 */
+  --base-700: 45 55 80;      /* Card border / Clear line #2d3750 */
+  --base-600: 105 120 152;   /* Muted / Secondary placeholder #697898 */
+  --base-400: 160 174 204;   /* Secondary text - high legibility #a0aecc */
+  --base-200: 222 230 244;   /* Body primary text #dee6f4 */
+  --base-100: 248 250 255;   /* Pure bright header text #f8faff */
+  --accent:      99 102 241; /* Electric Indigo #6366f1 */
+  --accent-soft: 129 140 248;/* Soft Indigo #818cf8 */
+  --body-bg: #07090e;
+  --body-gradient-a: rgba(99, 102, 241, 0.12);
+  --body-gradient-b: rgba(56, 189, 248, 0.08);
+  --card-bg: rgba(13, 16, 23, 0.82);
+  --card-border: rgba(45, 55, 80, 0.85);
+  --card-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+
+/* ─── Light theme (Executive Crisp Slate & Pure White) ──────── */
+html.light {
+  --base-950: 248 250 252;   /* Crisp Slate-50 canvas #f8fafc */
+  --base-900: 255 255 255;   /* Pure white card surface #ffffff */
+  --base-850: 241 245 249;   /* Slate-100 elevated surface / Input #f1f5f9 */
+  --base-800: 226 232 240;   /* Slate-200 subtle divider #e2e8f0 */
+  --base-700: 203 213 225;   /* Slate-300 crisp card border #cbd5e1 */
+  --base-600: 148 163 184;   /* Slate-400 muted text #94a3b8 */
+  --base-400: 71 85 105;     /* Slate-600 strong secondary text #475569 */
+  --base-200: 30 41 59;      /* Slate-800 rich body text #1e293b */
+  --base-100: 15 23 42;      /* Slate-900 deep contrast heading #0f172a */
+  --accent:      79 70 229;  /* Royal Indigo #4f46e5 */
+  --accent-soft: 67 56 202;  /* Deep Indigo #4338ca */
+  --body-bg: #f8fafc;
+  --body-gradient-a: rgba(79, 70, 229, 0.06);
+  --body-gradient-b: rgba(14, 165, 233, 0.04);
+  --card-bg: rgba(255, 255, 255, 0.96);
+  --card-border: rgba(226, 232, 240, 0.95);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 16px -2px rgba(15, 23, 42, 0.06);
+  color-scheme: light;
+}
+
 html, body, #root {
   height: 100%;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background:
-    radial-gradient(circle at 10% -10%, rgba(124,158,255,0.08), transparent 40%),
-    radial-gradient(circle at 90% 0%, rgba(124,158,255,0.05), transparent 35%),
-    #0a0b0f;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--body-bg);
+  background-image:
+    radial-gradient(circle at 15% -5%, var(--body-gradient-a), transparent 45%),
+    radial-gradient(circle at 85% 10%, var(--body-gradient-b), transparent 40%),
+    radial-gradient(circle at 50% 90%, var(--body-gradient-a), transparent 50%);
+  color: rgb(var(--base-200));
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card {
-  @apply bg-base-900/80 border border-base-700 rounded-xl2 backdrop-blur-sm;
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .label-eyebrow {
-  @apply font-mono text-[11px] tracking-[0.18em] uppercase text-base-400;
+  @apply font-mono text-[11px] font-medium tracking-[0.18em] uppercase text-base-400;
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #343b4f; border-radius: 8px; }
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--base-700)); border-radius: 9999px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* Custom High-Definition Date & Time Picker Icons on Right Side */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  margin-right: 2px;
+  opacity: 1 !important;
+  filter: none !important;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 18px 18px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+}
+
+/* Light Mode: Deep High-Contrast Indigo Vector */
+html.light input[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%234f46e5" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>');
+}
+html.light input[type="time"]::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%234f46e5" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>');
+}
+
+/* Dark / Night Mode: Luminous Electric Indigo Vector */
+html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+:root:not(.light) input[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23818cf8" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>');
+}
+html.dark input[type="time"]::-webkit-calendar-picker-indicator,
+:root:not(.light) input[type="time"]::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23818cf8" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>');
+}
+
 :focus-visible {
-  outline: 2px solid #7c9eff;
+  outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
+}
+
+/* Smooth transitions for theme switch */
+header, aside, footer, main, .card, input, select, textarea, button {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
 }

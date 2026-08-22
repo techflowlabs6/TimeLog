@@ -1,7 +1,10 @@
-# TimeLog — Team Time Tracking Dashboard
+# ⚡ TimeLog v2.0.0 — Prism Aura Edition
 
-Track time across 5 projects, see who worked how much on what, with pie charts and a
-person × project breakdown. Auth and data are 100% Supabase — Google OAuth or email/password.
+> **Team Hours Tracking Built for Modern Engineering Teams — Simple, Accurate, Real-Time.**
+
+Track time across projects, analyze workload distribution with interactive pie and stacked bar charts, toggle between obsidian night mode and crisp executive light mode, and manage team productivity with Supabase Auth + Postgres RLS.
+
+📖 **[Read the Full v2.0.0 Release Notes](./docs/RELEASE_NOTES_v2.0.md)**
 
 ## 1. Create the Supabase project
 

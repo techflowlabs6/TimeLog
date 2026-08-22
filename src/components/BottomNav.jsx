@@ -7,7 +7,7 @@ export default function BottomNav() {
   const links = [
     { to: '/', label: 'Dashboard', icon: '◈' },
     { to: '/log', label: 'Log Time', icon: '＋' },
-    { to: '/my-log', label: 'My Log', icon: '☰' },
+    { to: '/my-log', label: 'My Log', icon: '≡' },
     { to: '/roadmap', label: 'Roadmap', icon: '↗' },
     ...(isAdmin ? [{ to: '/admin/projects', label: 'Admin', icon: '⚙' }] : [])
   ]
