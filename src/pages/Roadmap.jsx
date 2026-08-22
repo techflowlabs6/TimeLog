@@ -108,32 +108,32 @@ export default function Roadmap() {
           const isShippedRelease = release.status === 'shipped'
 
           return (
-            <div key={release.id} className="card p-4 sm:p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+            <div key={release.id} className="card p-5 sm:p-6 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span
-                    className="text-xs font-mono px-2.5 py-0.5 rounded-full border font-medium"
+                    className="text-xs font-mono px-3 py-1 rounded-full border font-bold"
                     style={{ color: style.color, borderColor: `${style.color}55`, background: `${style.color}14` }}
                   >
                     {style.label}
                   </span>
-                  <h2 className="font-display text-base font-semibold text-base-100">{release.title}</h2>
+                  <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white">{release.title}</h2>
                 </div>
                 {!isShippedRelease && (
-                  <div className="text-xs text-base-400 font-mono">
-                    Progress: <strong className="text-accent font-normal">{doneCount}/{release.items.length}</strong>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-mono font-semibold">
+                    Progress: <strong className="text-accent font-extrabold">{doneCount}/{release.items.length}</strong>
                   </div>
                 )}
               </div>
-              <p className="text-xs text-base-400 mb-4">{release.blurb}</p>
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium mb-4 leading-relaxed">{release.blurb}</p>
 
-              <ul className="flex flex-col gap-1.5">
+              <ul className="flex flex-col gap-2">
                 {release.items.map((item, i) => {
                   const key = `${release.id}:${i}`
                   const isChecked = isShippedRelease ? true : !!checked[key]
                   return (
                     <li key={key}>
-                      <label className={`flex items-start gap-3 p-2 rounded-xl text-xs sm:text-sm transition-colors ${
+                      <label className={`flex items-start gap-3 p-2.5 rounded-xl text-xs sm:text-sm transition-colors ${
                         isShippedRelease ? 'cursor-default' : 'cursor-pointer hover:bg-base-850/60'
                       }`}>
                         <input
@@ -143,7 +143,7 @@ export default function Roadmap() {
                           onChange={() => toggle(release.id, i)}
                           className="mt-0.5 accent-accent w-4 h-4 rounded shrink-0 cursor-pointer"
                         />
-                        <span className={isChecked ? 'text-base-400 line-through' : 'text-base-200'}>{item}</span>
+                        <span className={isChecked ? 'text-slate-400 dark:text-slate-500 line-through font-medium' : 'text-slate-900 dark:text-slate-100 font-semibold'}>{item}</span>
                       </label>
                     </li>
                   )

@@ -92,28 +92,34 @@ export default function AdminProjects() {
         </button>
       </form>
 
-      <div className="card divide-y divide-base-800 overflow-hidden min-w-0">
+      <div className="card divide-y divide-base-800 overflow-hidden min-w-0 shadow-md">
         {loading ? (
-          <div className="px-5 py-6 text-xs text-base-400 font-mono text-center">loading projects…</div>
+          <div className="px-5 py-6 text-xs text-slate-500 font-mono text-center">loading projects…</div>
         ) : (
           projects.map((p) => (
-            <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 hover:bg-base-850/40 transition-colors min-w-0 overflow-hidden">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: p.color_hex }} />
+            <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 hover:bg-base-850/40 transition-colors min-w-0 overflow-hidden">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-4 h-4 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 dark:ring-white/10" style={{ background: p.color_hex }} />
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-semibold text-base-100 truncate">{p.name}</div>
-                  <div className="text-[10px] text-base-400">{p.is_active ? 'Active' : 'Inactive'}</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{p.name}</div>
+                  <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {p.is_active ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">● Active</span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-500">○ Inactive</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3 justify-between sm:justify-end">
-                <div className="flex gap-1.5 items-center">
+                <div className="flex gap-1.5 items-center bg-base-850 px-2 py-1 rounded-lg border border-base-700">
                   {PALETTE.map((c) => (
                     <button
                       key={c}
                       onClick={() => updateColor(p, c)}
-                      className="w-4 h-4 rounded-full border transition-transform hover:scale-110 shrink-0"
-                      style={{ background: c, borderColor: p.color_hex === c ? '#ffffff' : 'transparent' }}
+                      className="w-4 h-4 rounded-full border transition-transform hover:scale-110 shrink-0 shadow-xs"
+                      style={{ background: c, borderColor: p.color_hex === c ? '#ffffff' : 'transparent', borderWidth: p.color_hex === c ? '2px' : '1px' }}
                       aria-label={`Change color to ${c}`}
                     />
                   ))}
@@ -121,13 +127,13 @@ export default function AdminProjects() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => toggleActive(p)}
-                    className="text-xs text-base-300 hover:text-accent px-2.5 py-1 rounded-lg border border-base-700 bg-base-850 hover:bg-base-800 transition-colors"
+                    className="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-accent px-3 py-1.5 rounded-lg border border-base-700 bg-base-850 hover:bg-base-800 transition-colors shadow-xs"
                   >
                     {p.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                   <button
                     onClick={() => handleDelete(p.id)}
-                    className="text-xs text-base-400 hover:text-red-400 px-2.5 py-1 rounded-lg border border-base-700 bg-base-850 hover:bg-base-800 transition-colors"
+                    className="text-xs font-bold text-red-500 hover:text-red-400 px-3 py-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 transition-colors shadow-xs"
                   >
                     Delete
                   </button>

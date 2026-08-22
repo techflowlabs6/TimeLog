@@ -49,7 +49,7 @@ export default function Login() {
 
         <button
           onClick={signInWithGoogle}
-          className="w-full flex items-center justify-center gap-2.5 bg-base-100 text-base-950 font-semibold text-sm py-3 rounded-xl hover:bg-white transition-colors mb-6 shadow-xs"
+          className="w-full flex items-center justify-center gap-2.5 bg-white dark:bg-base-850 text-slate-800 dark:text-white border border-slate-200 dark:border-base-700 font-bold text-sm py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-base-800 transition-colors mb-6 shadow-sm"
         >
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.7 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.7 0-14.4 4.3-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.3 0 10.1-2 13.7-5.4l-6.3-5.3C29.4 35.3 26.8 36 24 36c-5.3 0-9.8-3.3-11.4-8l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.3 5.3C40.3 36.5 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
           Continue with Google
@@ -57,7 +57,7 @@ export default function Login() {
 
         <div className="flex items-center gap-3 mb-6">
           <div className="h-px flex-1 bg-base-700" />
-          <span className="text-xs text-base-400 font-mono">or email</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">or email</span>
           <div className="h-px flex-1 bg-base-700" />
         </div>
 
@@ -69,7 +69,7 @@ export default function Login() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              className="bg-base-850 border border-base-700 rounded-xl px-3.5 py-3 text-sm text-base-100 placeholder-base-400 focus:border-accent outline-none"
+              className="bg-base-850 border border-base-700 rounded-xl px-3.5 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-accent outline-none font-medium"
             />
           )}
           <input
@@ -78,7 +78,7 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="bg-base-850 border border-base-700 rounded-xl px-3.5 py-3 text-sm text-base-100 placeholder-base-400 focus:border-accent outline-none"
+            className="bg-base-850 border border-base-700 rounded-xl px-3.5 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-accent outline-none font-medium"
           />
           <input
             type="password"
@@ -87,15 +87,15 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
-            className="bg-base-850 border border-base-700 rounded-xl px-3.5 py-3 text-sm text-base-100 placeholder-base-400 focus:border-accent outline-none"
+            className="bg-base-850 border border-base-700 rounded-xl px-3.5 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-accent outline-none font-medium"
           />
 
-          {error && <div className="text-xs text-red-400 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20">{error}</div>}
+          {error && <div className="text-xs text-red-500 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 font-semibold">{error}</div>}
 
           <button
             type="submit"
             disabled={busy}
-            className="w-full bg-accent hover:bg-accent-soft transition-colors text-base-950 font-semibold text-sm py-3 rounded-xl disabled:opacity-50 mt-1 shadow-xs"
+            className="w-full bg-accent hover:bg-accent-soft transition-all text-white font-bold text-sm py-3 rounded-xl disabled:opacity-50 mt-1 shadow-md active:scale-95"
           >
             {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
           </button>

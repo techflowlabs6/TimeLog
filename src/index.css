@@ -10,7 +10,9 @@
   --base-800: 30 37 54;      /* Secondary border / Subtle line #1e2536 */
   --base-700: 45 55 80;      /* Card border / Clear line #2d3750 */
   --base-600: 105 120 152;   /* Muted / Secondary placeholder #697898 */
+  --base-500: 135 150 180;   /* Medium secondary label #8796b4 */
   --base-400: 160 174 204;   /* Secondary text - high legibility #a0aecc */
+  --base-300: 195 208 230;   /* Primary body text light #c3d0e6 */
   --base-200: 222 230 244;   /* Body primary text #dee6f4 */
   --base-100: 248 250 255;   /* Pure bright header text #f8faff */
   --accent:      99 102 241; /* Electric Indigo #6366f1 */
@@ -32,7 +34,9 @@ html.light {
   --base-800: 226 232 240;   /* Slate-200 subtle divider #e2e8f0 */
   --base-700: 203 213 225;   /* Slate-300 crisp card border #cbd5e1 */
   --base-600: 148 163 184;   /* Slate-400 muted text #94a3b8 */
+  --base-500: 100 116 139;   /* Slate-500 medium text #64748b */
   --base-400: 71 85 105;     /* Slate-600 strong secondary text #475569 */
+  --base-300: 51 65 85;      /* Slate-700 rich dark body text #334155 */
   --base-200: 30 41 59;      /* Slate-800 rich body text #1e293b */
   --base-100: 15 23 42;      /* Slate-900 deep contrast heading #0f172a */
   --accent:      79 70 229;  /* Royal Indigo #4f46e5 */
