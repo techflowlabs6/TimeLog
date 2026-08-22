@@ -353,11 +353,11 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm sm:text-base font-extrabold text-accent">
-                  {(thisWeekMinutes / 60).toFixed(1)}h
+                  {(totalMinutesWeek / 60).toFixed(1)}h
                 </span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">/ 80.0h</span>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-accent/15 text-accent border border-accent/30 ml-1">
-                  {Math.min(100, Math.round(((thisWeekMinutes / 60) / 80) * 100))}%
+                  {Math.min(100, Math.round(((totalMinutesWeek / 60) / 80) * 100))}%
                 </span>
               </div>
             </div>
@@ -366,7 +366,7 @@ export default function Dashboard() {
             <div className="w-full h-2.5 bg-base-800/60 rounded-full overflow-hidden p-0.5 border border-base-700/60">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-400 transition-all duration-700 shadow-xs"
-                style={{ width: `${Math.min(100, Math.max(5, Math.round(((thisWeekMinutes / 60) / 80) * 100)))}%` }}
+                style={{ width: `${Math.min(100, Math.max(5, Math.round(((totalMinutesWeek / 60) / 80) * 100)))}%` }}
               />
             </div>
           </div>
