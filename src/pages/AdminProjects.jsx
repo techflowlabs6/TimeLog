@@ -86,7 +86,7 @@ export default function AdminProjects() {
 
         <button
           type="submit"
-          className="w-full sm:w-auto bg-accent hover:bg-accent-soft transition-colors text-base-950 font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl shadow-xs mt-1"
+          className="w-full sm:w-auto bg-accent hover:bg-accent-soft transition-all text-white font-bold text-xs sm:text-sm py-2.5 px-5 rounded-xl shadow-md active:scale-95 mt-1"
         >
           Add project
         </button>
@@ -101,19 +101,23 @@ export default function AdminProjects() {
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-4 h-4 rounded-full shrink-0 shadow-xs ring-1 ring-black/10 dark:ring-white/10" style={{ background: p.color_hex }} />
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{p.name}</div>
-                  <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  <div className="text-sm font-extrabold text-slate-900 dark:text-white truncate">{p.name}</div>
+                  <div className="mt-0.5">
                     {p.is_active ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">● Active</span>
+                      <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/25">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active
+                      </span>
                     ) : (
-                      <span className="text-slate-400 dark:text-slate-500">○ Inactive</span>
+                      <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-medium bg-slate-500/10 px-2 py-0.5 rounded-md border border-slate-500/25">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> Inactive
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3 justify-between sm:justify-end">
-                <div className="flex gap-1.5 items-center bg-base-850 px-2 py-1 rounded-lg border border-base-700">
+                <div className="flex gap-1.5 items-center bg-base-850 px-2 py-1 rounded-xl border border-base-700">
                   {PALETTE.map((c) => (
                     <button
                       key={c}
@@ -127,13 +131,17 @@ export default function AdminProjects() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => toggleActive(p)}
-                    className="text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-accent px-3 py-1.5 rounded-lg border border-base-700 bg-base-850 hover:bg-base-800 transition-colors shadow-xs"
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all shadow-xs ${
+                      p.is_active
+                        ? 'text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20'
+                        : 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20'
+                    }`}
                   >
                     {p.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                   <button
                     onClick={() => handleDelete(p.id)}
-                    className="text-xs font-bold text-red-500 hover:text-red-400 px-3 py-1.5 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 transition-colors shadow-xs"
+                    className="text-xs font-bold text-red-700 dark:text-red-300 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 px-3 py-1.5 rounded-xl transition-all shadow-xs"
                   >
                     Delete
                   </button>
