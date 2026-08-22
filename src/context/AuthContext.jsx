@@ -48,11 +48,15 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function signInWithGoogle() {
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    const redirectUrl = isLocal 
+      ? window.location.origin
+      : (import.meta.env.VITE_SUPABASE_REDIRECT_URL || window.location.origin)
+
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo:
-          import.meta.env.VITE_SUPABASE_REDIRECT_URL || window.location.origin
+        redirectTo: redirectUrl
       }
     })
   }
