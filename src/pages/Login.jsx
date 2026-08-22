@@ -3,13 +3,14 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
-  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
+  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail, devLogin } = useAuth()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
   if (user) return <Navigate to="/" replace />
 
@@ -46,6 +47,17 @@ export default function Login() {
             {mode === 'signin' ? 'sign in to your workspace' : 'create your account'}
           </div>
         </div>
+
+        {/* 1-Click Local Dev Login (Instant Access without OAuth redirect) */}
+        {isLocal && (
+          <button
+            onClick={devLogin}
+            type="button"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-accent to-indigo-500 hover:from-accent-soft hover:to-indigo-400 text-white font-extrabold text-xs tracking-wider uppercase py-3 rounded-xl transition-all shadow-md hover:shadow-indigo-500/25 mb-3"
+          >
+            ⚡ Continue as Admin (Local Dev Instant)
+          </button>
+        )}
 
         <button
           onClick={signInWithGoogle}

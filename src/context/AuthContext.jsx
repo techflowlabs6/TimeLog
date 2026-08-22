@@ -19,6 +19,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     async function initSession() {
+      // Check local dev bypass session
+      const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      const savedDev = isLocalHost ? localStorage.getItem('timelog_dev_session') : null
+      if (savedDev) {
+        try {
+          const parsed = JSON.parse(savedDev)
+          setSession(parsed.session)
+          setProfile(parsed.profile)
+          setLoading(false)
+          return
+        } catch (e) {}
+      }
+
       if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
         await supabase.auth.getSessionFromUrl().catch(() => {})
       }
@@ -40,7 +53,10 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         loadProfile(session.user.id)
       } else {
-        setProfile(null)
+        const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        if (!isLocalHost || !localStorage.getItem('timelog_dev_session')) {
+          setProfile(null)
+        }
       }
     })
 
@@ -61,6 +77,21 @@ export function AuthProvider({ children }) {
     })
   }
 
+  async function devLogin() {
+    const { data: profiles } = await supabase.from('profiles').select('*').limit(5)
+    const admin = profiles?.find(p => p.role === 'admin') || profiles?.[0] || {
+      id: 'local-dev-user',
+      full_name: 'Naveen Reddy',
+      role: 'admin',
+      email: 'naveen@techflowlabs.com'
+    }
+    const mockUser = { id: admin.id, email: admin.email }
+    const mockSession = { user: mockUser, access_token: 'local-dev-token' }
+    setSession(mockSession)
+    setProfile(admin)
+    localStorage.setItem('timelog_dev_session', JSON.stringify({ session: mockSession, profile: admin }))
+  }
+
   async function signInWithEmail(email, password) {
     return supabase.auth.signInWithPassword({ email, password })
   }
@@ -74,7 +105,10 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    localStorage.removeItem('timelog_dev_session')
+    await supabase.auth.signOut().catch(() => {})
+    setSession(null)
+    setProfile(null)
   }
 
   const value = {
@@ -86,6 +120,7 @@ export function AuthProvider({ children }) {
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
+    devLogin,
     signOut
   }
 
