@@ -15,10 +15,12 @@ export default function LogTime() {
   const [projects, setProjects] = useState([])
   const [projectId, setProjectId] = useState('')
   const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10))
-  const [mode, setMode] = useState('range') // 'range' | 'manual'
+  const [mode, setMode] = useState('range') // 'range' | 'manual' | 'timer'
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
   const [manualHours, setManualHours] = useState('1')
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [timerRunning, setTimerRunning] = useState(false)
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -30,9 +32,31 @@ export default function LogTime() {
     })
   }, [])
 
+  // Timer interval
+  useEffect(() => {
+    let interval = null
+    if (timerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds(s => s + 1)
+      }, 1000)
+    } else {
+      clearInterval(interval)
+    }
+    return () => clearInterval(interval)
+  }, [timerRunning])
+
   const durationMinutes = mode === 'range'
     ? minutesBetween(startTime, endTime)
-    : Math.round(parseFloat(manualHours || '0') * 60)
+    : mode === 'manual'
+    ? Math.round(parseFloat(manualHours || '0') * 60)
+    : Math.max(1, Math.round(timerSeconds / 60))
+
+  function formatTimerDisplay(secs) {
+    const h = Math.floor(secs / 3600)
+    const m = Math.floor((secs % 3600) / 60)
+    const s = secs % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -53,6 +77,10 @@ export default function LogTime() {
     } else {
       setMessage('Entry logged successfully!')
       setNotes('')
+      if (mode === 'timer') {
+        setTimerRunning(false)
+        setTimerSeconds(0)
+      }
     }
   }
 
@@ -122,33 +150,94 @@ export default function LogTime() {
         {/* Mode Selector */}
         <div>
           <div className="text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">Entry Mode</div>
-          <div className="flex p-1 bg-base-850 rounded-xl border border-base-700 gap-1">
+          <div className="grid grid-cols-3 p-1 bg-base-850 rounded-xl border border-base-700 gap-1">
             <button
               type="button"
               onClick={() => setMode('range')}
-              className={`flex-1 text-xs py-2 rounded-lg font-bold transition-all ${
+              className={`text-xs py-2 rounded-lg font-bold transition-all text-center truncate ${
                 mode === 'range' 
                   ? 'border border-accent/30 text-accent bg-accent/15 shadow-xs' 
                   : 'text-base-400 hover:text-base-100'
               }`}
             >
-              Start / End time
+              Start / End
             </button>
             <button
               type="button"
               onClick={() => setMode('manual')}
-              className={`flex-1 text-xs py-2 rounded-lg font-bold transition-all ${
+              className={`text-xs py-2 rounded-lg font-bold transition-all text-center truncate ${
                 mode === 'manual' 
                   ? 'border border-accent/30 text-accent bg-accent/15 shadow-xs' 
                   : 'text-base-400 hover:text-base-100'
               }`}
             >
-              Manual duration
+              Manual Hours
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('timer')}
+              className={`text-xs py-2 rounded-lg font-bold transition-all text-center truncate flex items-center justify-center gap-1.5 ${
+                mode === 'timer' 
+                  ? 'border border-accent/30 text-accent bg-accent/15 shadow-xs' 
+                  : 'text-base-400 hover:text-base-100'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${timerRunning ? 'bg-emerald-400 animate-pulse' : 'bg-base-600'}`} />
+              Live Timer
             </button>
           </div>
         </div>
 
-        {mode === 'range' ? (
+        {mode === 'timer' && (
+          <div className="p-5 rounded-2xl bg-base-900 border border-accent/30 flex flex-col items-center justify-center gap-3 shadow-inner">
+            <div className="text-[11px] font-mono uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${timerRunning ? 'bg-emerald-400 animate-ping' : 'bg-slate-400'}`} />
+              {timerRunning ? 'Live Recording Active…' : 'Timer Ready / Paused'}
+            </div>
+            <div className="font-mono text-4xl sm:text-5xl font-black text-slate-950 dark:text-white tracking-wider">
+              {formatTimerDisplay(timerSeconds)}
+            </div>
+            <div className="text-xs font-mono text-accent font-semibold">
+              ≈ {(durationMinutes / 60).toFixed(2)} hours tracked
+            </div>
+            <div className="flex items-center gap-2.5 mt-1">
+              {!timerRunning ? (
+                <button
+                  type="button"
+                  onClick={() => setTimerRunning(true)}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  </svg>
+                  {timerSeconds === 0 ? 'Start Timer' : 'Resume'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTimerRunning(false)}
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Pause
+                </button>
+              )}
+              {timerSeconds > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setTimerRunning(false); setTimerSeconds(0) }}
+                  className="px-4 py-2.5 rounded-xl bg-base-800 hover:bg-base-700 text-base-300 font-semibold text-xs transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {mode === 'range' && (
           <div className="grid grid-cols-2 gap-3 min-w-0">
             <div>
               <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
@@ -185,16 +274,26 @@ export default function LogTime() {
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {mode === 'manual' && (
           <div>
-            <div className="label-eyebrow text-[10px] sm:text-xs mb-1.5">Hours</div>
+            <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
+              <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Duration (hours)</span>
+            </label>
             <input
               type="number"
               step="0.25"
-              min="0"
+              min="0.25"
+              max="24"
               value={manualHours}
               onChange={(e) => setManualHours(e.target.value)}
-              className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-base-100 focus:border-accent outline-none box-border"
+              placeholder="e.g. 1.5"
+              required
+              className="w-full min-w-0 max-w-full bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors shadow-xs"
             />
           </div>
         )}

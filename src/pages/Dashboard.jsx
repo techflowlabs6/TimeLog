@@ -132,6 +132,24 @@ export default function Dashboard() {
     exportToCSV(`timelog_team_report_${dateStr}`, headers, exportRows)
   }
 
+  function setPreset(type) {
+    const today = new Date()
+    if (type === 'all') {
+      setDateFrom('')
+      setDateTo('')
+    } else if (type === 'today') {
+      const d = toISODate(today)
+      setDateFrom(d)
+      setDateTo(d)
+    } else if (type === 'week') {
+      setDateFrom(toISODate(startOfWeek()))
+      setDateTo(toISODate(today))
+    } else if (type === 'month') {
+      setDateFrom(toISODate(startOfMonth()))
+      setDateTo(toISODate(today))
+    }
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
       {/* Header Bar */}
@@ -154,6 +172,26 @@ export default function Dashboard() {
 
       {/* Filter Bar */}
       <div className="card p-4 sm:p-5 min-w-0 overflow-hidden">
+        {/* Quick Presets */}
+        <div className="flex items-center gap-2 flex-wrap pb-3.5 mb-3.5 border-b border-base-800/70">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mr-0.5">Presets:</span>
+          {[
+            { id: 'all', label: 'All Time' },
+            { id: 'today', label: 'Today' },
+            { id: 'week', label: 'This Week' },
+            { id: 'month', label: 'This Month' }
+          ].map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPreset(p.id)}
+              className="px-3 py-1 rounded-lg text-xs font-bold bg-base-850 hover:bg-accent/15 hover:text-accent border border-base-700 hover:border-accent/30 text-base-300 transition-all shadow-xs active:scale-95"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
           <div>
             <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
