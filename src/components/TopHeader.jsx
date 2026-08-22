@@ -282,7 +282,7 @@ export default function TopHeader() {
   const location = useLocation()
 
   return (
-    <header className="hidden lg:flex sticky top-0 z-40 h-14 items-center justify-between px-6 bg-base-900/75 backdrop-blur-xl border-b border-base-700/80 shadow-xs">
+    <header className="hidden lg:flex shrink-0 h-14 items-center justify-between px-6 bg-base-900/80 backdrop-blur-xl border-b border-base-700/80 shadow-xs z-30 select-none">
       {/* Left: Breadcrumb */}
       <BreadCrumb location={location} />
 
