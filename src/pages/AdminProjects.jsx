@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 
 const PALETTE = ['#7c9eff', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4', '#a855f7', '#ef4444', '#84cc16']
 
 export default function AdminProjects() {
   const { user } = useAuth()
+  const toast = useToast()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
@@ -31,23 +33,30 @@ export default function AdminProjects() {
     if (!error) {
       setProjects((prev) => [...prev, data])
       setName('')
+      toast.success(`🎉 Project "${data.name}" created!`)
+    } else {
+      toast.error(`Error: ${error.message}`)
     }
   }
 
   async function toggleActive(p) {
     await supabase.from('projects').update({ is_active: !p.is_active }).eq('id', p.id)
     setProjects((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_active: !x.is_active } : x)))
+    toast.info(p.is_active ? `Project "${p.name}" deactivated` : `Project "${p.name}" activated`)
   }
 
   async function updateColor(p, newColor) {
     await supabase.from('projects').update({ color_hex: newColor }).eq('id', p.id)
     setProjects((prev) => prev.map((x) => (x.id === p.id ? { ...x, color_hex: newColor } : x)))
+    toast.success(`Color updated for "${p.name}"`)
   }
 
   async function handleDelete(id) {
+    const project = projects.find(p => p.id === id)
     if (!confirm('Delete this project? This also deletes its time entries.')) return
     await supabase.from('projects').delete().eq('id', id)
     setProjects((prev) => prev.filter((p) => p.id !== id))
+    toast.info(`Project "${project?.name || ''}" deleted`)
   }
 
   return (

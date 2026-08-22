@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { useToast } from '../context/ToastContext'
 import StatCard from '../components/StatCard'
 import HoursPieChart from '../components/HoursPieChart'
 import PersonProjectBarChart from '../components/PersonProjectBarChart'
@@ -21,6 +22,7 @@ function toISODate(d) {
 }
 
 export default function Dashboard() {
+  const toast = useToast()
   const [entries, setEntries] = useState([])
   const [projects, setProjects] = useState([])
   const [profiles, setProfiles] = useState([])
@@ -130,6 +132,7 @@ export default function Dashboard() {
 
     const dateStr = new Date().toISOString().slice(0, 10)
     exportToCSV(`timelog_team_report_${dateStr}`, headers, exportRows)
+    toast.success('📊 Team report exported to CSV!')
   }
 
   function setPreset(type) {
@@ -332,11 +335,53 @@ export default function Dashboard() {
         <div className="text-xs text-base-400 font-mono py-12 text-center card">loading metrics…</div>
       ) : (
         <div className="space-y-4 sm:space-y-6 min-w-0">
+          {/* Team Weekly Productivity Target Banner */}
+          <div className="card p-4 sm:p-5 relative overflow-hidden shadow-md">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent text-sm font-bold shadow-xs">
+                  🎯
+                </div>
+                <div>
+                  <div className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                    Team Weekly Velocity Target
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Target: <strong className="text-slate-800 dark:text-slate-200">80.0h</strong> team capacity this week
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm sm:text-base font-extrabold text-accent">
+                  {(thisWeekMinutes / 60).toFixed(1)}h
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">/ 80.0h</span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-accent/15 text-accent border border-accent/30 ml-1">
+                  {Math.min(100, Math.round(((thisWeekMinutes / 60) / 80) * 100))}%
+                </span>
+              </div>
+            </div>
+
+            {/* Progress Track */}
+            <div className="w-full h-2.5 bg-base-800/60 rounded-full overflow-hidden p-0.5 border border-base-700/60">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-400 transition-all duration-700 shadow-xs"
+                style={{ width: `${Math.min(100, Math.max(5, Math.round(((thisWeekMinutes / 60) / 80) * 100)))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Visual Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
             <HoursPieChart title="Hours by project" data={byProject} />
             <HoursPieChart title="Hours by person" data={byPerson} />
           </div>
-          <PersonProjectBarChart rows={barRows} projects={projects} />
+
+          <PersonProjectBarChart
+            rows={barRows}
+            projects={projects}
+            title="Person × project breakdown"
+          />
         </div>
       )}
     </div>

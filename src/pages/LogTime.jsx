@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 
 function minutesBetween(start, end) {
   const [sh, sm] = start.split(':').map(Number)
@@ -12,6 +13,7 @@ function minutesBetween(start, end) {
 
 export default function LogTime() {
   const { user } = useAuth()
+  const toast = useToast()
   const [projects, setProjects] = useState([])
   const [projectId, setProjectId] = useState('')
   const [entryDate, setEntryDate] = useState(new Date().toISOString().slice(0, 10))
@@ -74,7 +76,10 @@ export default function LogTime() {
     setSaving(false)
     if (error) {
       setMessage(`Error: ${error.message}`)
+      toast.error(`Failed to log entry: ${error.message}`)
     } else {
+      const pName = projects.find(p => p.id === projectId)?.name || 'project'
+      toast.success(`✨ ${(durationMinutes / 60).toFixed(1)}h logged on ${pName}!`)
       setMessage('Entry logged successfully!')
       setNotes('')
       if (mode === 'timer') {

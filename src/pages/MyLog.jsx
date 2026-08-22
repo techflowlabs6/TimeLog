@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { exportToCSV } from '../lib/exportUtils'
 
 export default function MyLog() {
   const { user } = useAuth()
+  const toast = useToast()
   const [entries, setEntries] = useState([])
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +36,7 @@ export default function MyLog() {
     if (!confirm('Delete this entry?')) return
     await supabase.from('time_entries').delete().eq('id', id)
     setEntries((prev) => prev.filter((e) => e.id !== id))
+    toast.info('Time entry deleted')
   }
 
   function startEdit(entry) {
@@ -45,6 +48,7 @@ export default function MyLog() {
     await supabase.from('time_entries').update({ notes: editNotes }).eq('id', id)
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, notes: editNotes } : e)))
     setEditingId(null)
+    toast.success('Entry notes updated!')
   }
 
   function handleExportCSV() {
@@ -64,6 +68,7 @@ export default function MyLog() {
 
     const dateStr = new Date().toISOString().slice(0, 10)
     exportToCSV(`my_timelog_entries_${dateStr}`, headers, exportRows)
+    toast.success('📁 Personal CSV export downloaded!')
   }
 
   return (
