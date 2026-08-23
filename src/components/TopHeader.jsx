@@ -1,31 +1,29 @@
 import { useState, useRef, useEffect } from 'react'
-import { useLocation, NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import MemberProfileModal from './MemberProfileModal'
+import { fetchAllData } from '../lib/dataStore'
 
 const ROUTE_META = {
-  '/': { label: 'Dashboard', icon: '◈', desc: 'Overview of team hours & activity' },
-  '/log': { label: 'Log Time', icon: '＋', desc: 'Record your work hours' },
-  '/my-log': { label: 'My Entries', icon: '≡', desc: 'Your personal time log' },
-  '/roadmap': { label: 'Roadmap', icon: '↗', desc: 'Project milestones & planning' },
-  '/admin/projects': { label: 'Projects (Admin)', icon: '⚙', desc: 'Manage team projects' },
+  '/': { title: 'Team Dashboard', desc: 'Team overview & hours', icon: '◈', label: 'Dashboard' },
+  '/log': { title: 'Log Time', desc: 'Add new time entry', icon: '＋', label: 'Log Time' },
+  '/my-log': { title: 'My Entries', desc: 'Personal time logs', icon: '≡', label: 'My Entries' },
+  '/roadmap': { title: 'Roadmap', desc: 'Features & planned releases', icon: '↗', label: 'Roadmap' },
+  '/admin/projects': { title: 'Project Admin', desc: 'Create & manage projects', icon: '⚙', label: 'Projects' },
+  '/privacy': { title: 'Privacy Policy', desc: 'Legal & data privacy', icon: '§', label: 'Privacy' },
+  '/terms': { title: 'Terms of Service', desc: 'Terms & conditions', icon: '§', label: 'Terms' },
+  '/help': { title: 'Help Center', desc: 'Guides & FAQ', icon: '?', label: 'Help' },
 }
 
 function BreadCrumb({ location }) {
-  const meta = ROUTE_META[location.pathname] || { label: 'TimeLog', icon: '◈', desc: '' }
+  const current = ROUTE_META[location.pathname] || { title: 'TimeLog', icon: '◈' }
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <span className="text-slate-500 dark:text-slate-400 text-sm hidden sm:block font-bold">TimeLog</span>
-      <svg className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 hidden sm:block shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-      </svg>
-      <span className="text-slate-900 dark:text-white text-sm font-extrabold flex items-center gap-1.5">
-        <span className="text-accent font-bold">{meta.icon}</span>
-        {meta.label}
-      </span>
-      {meta.desc && (
-        <span className="hidden xl:block text-slate-500 dark:text-slate-400 text-xs ml-1 font-medium">— {meta.desc}</span>
-      )}
+    <div className="flex items-center gap-2 text-sm min-w-0">
+      <span className="font-mono text-accent text-base">{current.icon}</span>
+      <span className="text-slate-400 font-medium hidden sm:inline">TimeLog</span>
+      <span className="text-slate-500 font-mono hidden sm:inline">/</span>
+      <span className="font-bold text-slate-900 dark:text-white truncate">{current.title}</span>
     </div>
   )
 }
@@ -36,59 +34,60 @@ function SearchBar() {
   const inputRef = useRef(null)
 
   useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus()
-  }, [open])
-
-  // Keyboard shortcut: Ctrl+K / Cmd+K
-  useEffect(() => {
-    function handler(e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    function handleKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setOpen(v => !v)
       }
       if (e.key === 'Escape') setOpen(false)
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
   }, [])
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [open])
+
+  const filtered = Object.entries(ROUTE_META).filter(([path, meta]) =>
+    meta.label.toLowerCase().includes(query.toLowerCase()) ||
+    meta.desc.toLowerCase().includes(query.toLowerCase())
+  )
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2.5 px-3 py-1.5 bg-base-850 border border-base-700 rounded-xl text-base-400 hover:text-base-100 hover:border-accent/40 transition-all text-sm group shadow-xs"
-        title="Search (Ctrl+K)"
-        aria-label="Open Search"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 px-3 py-1.5 bg-base-850 hover:bg-base-800 border border-base-700 hover:border-accent/40 rounded-xl text-xs text-base-400 hover:text-base-200 transition-all font-mono shadow-xs"
+        aria-label="Quick search"
       >
-        <svg className="w-4 h-4 shrink-0 text-base-400 group-hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <span className="hidden md:block text-xs font-medium">Search…</span>
-        <span className="hidden lg:flex items-center gap-0.5 text-[10px] font-mono bg-base-900 border border-base-700 rounded px-1.5 py-0.5 text-base-400 group-hover:border-accent/40 transition-colors">
-          <span>⌘</span><span>K</span>
-        </span>
+        <span className="hidden sm:inline">Quick search…</span>
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] bg-base-900 border border-base-700 px-1.5 py-0.5 rounded text-base-400 font-bold">⌘K</kbd>
       </button>
 
       {open && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 w-full max-w-lg z-50 bg-base-900 border border-base-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-base-700 bg-base-850/50">
-              <svg className="w-5 h-5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50" onClick={() => setOpen(false)} />
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 w-full max-w-lg bg-base-900 border border-base-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-base-700 bg-base-850/60">
+              <svg className="w-4 h-4 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
                 ref={inputRef}
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search pages, entries, projects…"
-                className="flex-1 bg-transparent text-base-100 text-sm placeholder-base-400 outline-none"
+                placeholder="Search pages, features, or jump to route…"
+                className="w-full bg-transparent text-sm text-base-100 placeholder-base-400 outline-none font-medium"
               />
-              <kbd className="text-[10px] font-mono text-base-400 bg-base-850 border border-base-700 rounded px-1.5 py-0.5">ESC</kbd>
+              <kbd className="text-[10px] font-mono text-base-400 bg-base-800 px-1.5 py-0.5 rounded border border-base-700 font-bold">ESC</kbd>
             </div>
-            <div className="p-3">
+            <div className="p-2 max-h-72 overflow-y-auto space-y-0.5">
               <p className="text-xs text-base-400 px-2 pb-2 font-mono uppercase tracking-wider font-semibold">Quick Navigation</p>
-              {Object.entries(ROUTE_META).map(([path, meta]) => (
+              {filtered.map(([path, meta]) => (
                 <NavLink
                   key={path}
                   to={path}
@@ -112,9 +111,9 @@ function NotificationBell() {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const NOTIFS = [
-    { id: 1, icon: '🕐', title: 'New hours logged', body: 'Sushma logged 3h on French Grammar', time: '2m ago', unread: true },
-    { id: 2, icon: '✅', title: 'Week summary ready', body: 'Your team logged 62.5h this week', time: '1h ago', unread: true },
-    { id: 3, icon: '🚀', title: 'Roadmap updated', body: 'New milestone added to Q3 plan', time: '3h ago', unread: false },
+    { id: 1, icon: '🕐', title: 'New hours logged', body: 'Team member logged hours on Design System', time: '2m ago', unread: true },
+    { id: 2, icon: '✅', title: 'Sprint capacity tracking', body: 'Team is at 78% of weekly target hours', time: '1h ago', unread: true },
+    { id: 3, icon: '🚀', title: 'Roadmap synced', body: 'New milestones updated in database', time: '3h ago', unread: false },
   ]
   const unreadCount = NOTIFS.filter(n => n.unread).length
 
@@ -174,7 +173,7 @@ function NotificationBell() {
   )
 }
 
-function UserDropdown({ profile, isAdmin, signOut }) {
+function UserDropdown({ profile, isAdmin, signOut, onViewProfile }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const initial = (profile?.full_name || profile?.email || '?').slice(0, 1).toUpperCase()
@@ -212,7 +211,7 @@ function UserDropdown({ profile, isAdmin, signOut }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-56 bg-base-900 border border-base-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-full mt-2 w-60 bg-base-900 border border-base-700 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
           {/* Profile header */}
           <div className="px-4 py-3.5 border-b border-base-700 bg-base-850/60">
             <div className="flex items-center gap-3">
@@ -233,6 +232,17 @@ function UserDropdown({ profile, isAdmin, signOut }) {
 
           {/* Menu items */}
           <div className="p-1.5 space-y-0.5">
+            <button
+              onClick={() => { setOpen(false); onViewProfile() }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-accent hover:bg-base-800 transition-colors text-left"
+            >
+              <svg className="w-4 h-4 text-slate-400 group-hover:text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span>Performance Profile</span>
+              <span className="ml-auto text-[10px] font-mono font-bold bg-accent/15 text-accent px-1.5 py-0.2 rounded border border-accent/30">KPIs</span>
+            </button>
+
             <NavLink to="/my-log" onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-accent hover:bg-base-800 transition-colors">
               <svg className="w-4 h-4 text-slate-400 group-hover:text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -280,6 +290,16 @@ export default function TopHeader() {
   const { profile, isAdmin, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [allEntries, setAllEntries] = useState([])
+  const [allProjects, setAllProjects] = useState([])
+
+  async function handleOpenProfile() {
+    const data = await fetchAllData()
+    setAllEntries(data.entries || [])
+    setAllProjects(data.projects || [])
+    setProfileModalOpen(true)
+  }
 
   return (
     <header className="hidden lg:flex shrink-0 h-14 items-center justify-between px-6 bg-base-900/80 backdrop-blur-xl border-b border-base-700/80 shadow-xs z-30 select-none">
@@ -313,8 +333,18 @@ export default function TopHeader() {
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
           Online
         </div>
-        <UserDropdown profile={profile} isAdmin={isAdmin} signOut={signOut} />
+        <UserDropdown profile={profile} isAdmin={isAdmin} signOut={signOut} onViewProfile={handleOpenProfile} />
       </div>
+
+      {/* Profile Modal */}
+      {profileModalOpen && profile && (
+        <MemberProfileModal
+          member={profile}
+          entries={allEntries}
+          projects={allProjects}
+          onClose={() => setProfileModalOpen(false)}
+        />
+      )}
     </header>
   )
 }

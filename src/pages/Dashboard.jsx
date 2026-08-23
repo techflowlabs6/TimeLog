@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext'
 import StatCard from '../components/StatCard'
 import HoursPieChart from '../components/HoursPieChart'
 import PersonProjectBarChart from '../components/PersonProjectBarChart'
+import MemberProfileModal from '../components/MemberProfileModal'
 import { exportToCSV } from '../lib/exportUtils'
 
 function startOfWeek() {
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
+  const [selectedMember, setSelectedMember] = useState(null)
 
   async function load(quiet = false) {
     if (!quiet) setLoading(true)
@@ -407,7 +409,7 @@ export default function Dashboard() {
                   <span>👥</span> Registered Team Members & Activity ({memberStats.length})
                 </h3>
                 <p className="text-xs text-base-400 mt-0.5">
-                  Detailed contribution hours, active project coverage, and recent timestamps per person.
+                  Click on any member to view their complete performance profile, project breakdown, and work history.
                 </p>
               </div>
             </div>
@@ -428,14 +430,22 @@ export default function Dashboard() {
                   {memberStats.map((member) => {
                     const initial = (member.full_name || member.email || '?').slice(0, 1).toUpperCase()
                     return (
-                      <tr key={member.id} className="hover:bg-base-850/40 transition-colors">
+                      <tr
+                        key={member.id}
+                        onClick={() => setSelectedMember(member)}
+                        className="hover:bg-base-850/70 transition-colors cursor-pointer group"
+                        title="Click to view detailed member profile"
+                      >
                         <td className="py-3 pr-4">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-accent/20 text-accent flex items-center justify-center font-mono text-xs font-bold border border-accent/30 shrink-0">
+                            <div className="w-8 h-8 rounded-xl bg-accent/20 text-accent group-hover:bg-accent group-hover:text-base-950 transition-all flex items-center justify-center font-mono text-xs font-bold border border-accent/30 shrink-0 shadow-xs">
                               {initial}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-bold text-base-100 truncate">{member.full_name || 'Member'}</div>
+                              <div className="font-bold text-base-100 group-hover:text-accent transition-colors truncate flex items-center gap-1.5">
+                                <span>{member.full_name || 'Member'}</span>
+                                <span className="text-[10px] opacity-0 group-hover:opacity-100 text-accent transition-opacity">→</span>
+                              </div>
                               <div className="text-[10px] text-base-400 truncate">{member.email || 'No email provided'}</div>
                             </div>
                           </div>
@@ -469,6 +479,16 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Member Profile Modal */}
+      {selectedMember && (
+        <MemberProfileModal
+          member={selectedMember}
+          entries={entries}
+          projects={projects}
+          onClose={() => setSelectedMember(null)}
+        />
       )}
     </div>
   )
