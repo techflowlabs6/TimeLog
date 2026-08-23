@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchAllData } from '../lib/dataStore'
+import { fetchAllData, updateUserProfileRole } from '../lib/dataStore'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import StatCard from '../components/StatCard'
 import HoursPieChart from '../components/HoursPieChart'
@@ -23,6 +24,7 @@ function toISODate(d) {
 }
 
 export default function Dashboard() {
+  const { user, isAdmin } = useAuth()
   const toast = useToast()
   const [entries, setEntries] = useState([])
   const [projects, setProjects] = useState([])
@@ -32,6 +34,7 @@ export default function Dashboard() {
   const [dateTo, setDateTo] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
   const [selectedMember, setSelectedMember] = useState(null)
+  const [updatingRole, setUpdatingRole] = useState(null)
 
   async function load(quiet = false) {
     if (!quiet) setLoading(true)
@@ -44,7 +47,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     load()
-    // Auto-refresh when tab is focused or periodically every 15s to capture multi-account entries
     const interval = setInterval(() => load(true), 15000)
     window.addEventListener('focus', () => load(true))
     return () => {
@@ -100,7 +102,7 @@ export default function Dashboard() {
     return Object.values(byUser)
   }, [filtered, profileMap, projectMap])
 
-  // ── Registered Member Metrics & Breakdown ───────────────────
+  // Registered Member Metrics & Breakdown
   const memberStats = useMemo(() => {
     return profiles.map((p) => {
       const userEntries = entries.filter((e) => e.user_id === p.id)
@@ -180,18 +182,38 @@ export default function Dashboard() {
     }
   }
 
+  // Handle Admin Role Grant / Revoke (Database direct persistence)
+  async function handleToggleUserRole(e, member) {
+    e.stopPropagation()
+    const nextRole = member.role === 'admin' ? 'member' : 'admin'
+    setUpdatingRole(member.id)
+
+    setProfiles(prev =>
+      prev.map(p => p.id === member.id ? { ...p, role: nextRole } : p)
+    )
+
+    await updateUserProfileRole(member.id, nextRole)
+    setUpdatingRole(null)
+
+    if (nextRole === 'admin') {
+      toast.success(`👑 Granted full Admin privileges to ${member.full_name || member.email}!`)
+    } else {
+      toast.info(`👤 Changed ${member.full_name || member.email} to Member role`)
+    }
+  }
+
   return (
-    <div className="space-y-4 sm:space-y-6 min-w-0 overflow-hidden">
+    <div className="space-y-4 sm:space-y-6 min-w-0 max-w-full overflow-hidden">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-base-100">Team Dashboard</h1>
           <p className="text-xs sm:text-sm text-base-400 mt-1 font-medium">Real-time team hours across every project.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => load()}
-            className="p-2.5 bg-base-850 hover:bg-base-800 text-base-300 hover:text-base-100 border border-base-700 rounded-xl text-xs font-bold transition-all shadow-xs"
+            className="p-2.5 bg-base-850 hover:bg-base-800 text-base-300 hover:text-base-100 border border-base-700 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0"
             title="Refresh Live Data"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,7 +223,7 @@ export default function Dashboard() {
           <button
             onClick={handleExportCSV}
             disabled={filtered.length === 0}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-base-850 hover:bg-base-800 text-accent border border-accent/30 hover:border-accent/60 px-4 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40 shadow-xs hover:shadow-sm active:scale-95"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-base-850 hover:bg-base-800 text-accent border border-accent/30 hover:border-accent/60 px-4 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40 shadow-xs hover:shadow-sm active:scale-95 shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -211,60 +233,81 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="card p-4 sm:p-5 min-w-0 overflow-hidden">
-        {/* Quick Presets */}
-        <div className="flex items-center gap-2 flex-wrap pb-3.5 mb-3.5 border-b border-base-800/70">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mr-0.5">Presets:</span>
-          {[
-            { id: 'all', label: 'All Time' },
-            { id: 'today', label: 'Today' },
-            { id: 'week', label: 'This Week' },
-            { id: 'month', label: 'This Month' }
-          ].map((p) => (
+      {/* Filter Card with Guaranteed Inside Bounds */}
+      <div className="card p-4 sm:p-5 w-full max-w-full overflow-hidden box-border">
+        {/* Presets and Clear Action Row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap pb-3 mb-3.5 border-b border-base-800/70">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mr-1">
+              Presets:
+            </span>
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: 'today', label: 'Today' },
+              { id: 'week', label: 'This Week' },
+              { id: 'month', label: 'This Month' }
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPreset(p.id)}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-base-850 hover:bg-accent/15 hover:text-accent border border-base-700 hover:border-accent/30 text-base-300 transition-all shadow-xs active:scale-95"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {(dateFrom || dateTo || projectFilter !== 'all') && (
             <button
-              key={p.id}
               type="button"
-              onClick={() => setPreset(p.id)}
-              className="px-3 py-1 rounded-lg text-xs font-bold bg-base-850 hover:bg-accent/15 hover:text-accent border border-base-700 hover:border-accent/30 text-base-300 transition-all shadow-xs active:scale-95"
+              onClick={() => {
+                setDateFrom('')
+                setDateTo('')
+                setProjectFilter('all')
+              }}
+              className="text-xs font-bold text-accent hover:text-accent-soft py-1 px-3 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/25 transition-all active:scale-95 shrink-0"
             >
-              {p.label}
+              ✕ Clear Filters
             </button>
-          ))}
+          )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
-          <div>
+        {/* 3 Perfectly Contained Responsive Columns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 w-full max-w-full">
+          <div className="w-full min-w-0">
             <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
               <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span>From</span>
+              <span>From Date</span>
             </label>
             <input
               type="date"
               value={dateFrom}
               onClick={(e) => e.target.showPicker?.()}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs font-semibold text-base-100 outline-none transition-colors"
+              className="w-full min-w-0 max-w-full box-border bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors cursor-pointer shadow-xs"
             />
           </div>
-          <div>
+
+          <div className="w-full min-w-0">
             <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
               <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span>To</span>
+              <span>To Date</span>
             </label>
             <input
               type="date"
               value={dateTo}
               onClick={(e) => e.target.showPicker?.()}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs font-semibold text-base-100 outline-none transition-colors"
+              className="w-full min-w-0 max-w-full box-border bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors cursor-pointer shadow-xs"
             />
           </div>
-          <div className="col-span-2 sm:col-span-1">
+
+          <div className="w-full min-w-0 sm:col-span-2 lg:col-span-1">
             <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
               <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -274,7 +317,7 @@ export default function Dashboard() {
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="w-full bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs font-semibold text-base-100 outline-none transition-colors"
+              className="w-full min-w-0 max-w-full box-border bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors cursor-pointer shadow-xs"
             >
               <option value="all">All projects ({projects.length})</option>
               {projects.map((p) => (
@@ -284,21 +327,6 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-          {(dateFrom || dateTo || projectFilter !== 'all') && (
-            <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setDateFrom('')
-                  setDateTo('')
-                  setProjectFilter('all')
-                }}
-                className="w-full text-xs font-bold text-accent hover:text-accent-soft p-2 rounded-xl bg-accent/10 border border-accent/20 transition-all hover:bg-accent/20 active:scale-95"
-              >
-                Clear filters
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -308,16 +336,17 @@ export default function Dashboard() {
           loading live metrics & team hours…
         </div>
       ) : (
-        <div className="space-y-4 sm:space-y-6">
-          {/* Stat Cards Overview */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+        <div className="space-y-4 sm:space-y-6 min-w-0 max-w-full">
+          {/* Colorful Radiant Gradient Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0 max-w-full">
             <StatCard
               label="Total hours"
               value={fmtH(totalMinutesAllTime)}
               sub="All-time tracked"
+              variant="indigo"
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               }
             />
@@ -325,9 +354,10 @@ export default function Dashboard() {
               label="This week"
               value={fmtH(totalMinutesWeek)}
               sub="Current week"
+              variant="emerald"
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               }
             />
@@ -335,9 +365,10 @@ export default function Dashboard() {
               label="This month"
               value={fmtH(totalMinutesMonth)}
               sub="Current month"
+              variant="sky"
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               }
             />
@@ -345,31 +376,32 @@ export default function Dashboard() {
               label="Registered Team"
               value={`${activeMembersCount} / ${activeProjectsCount}`}
               sub="Members / Projects"
+              variant="amber"
               icon={
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               }
             />
           </div>
 
           {/* Weekly Team Capacity Target Tracker */}
-          <div className="card p-4 sm:p-6 bg-gradient-to-br from-base-900 via-base-900/90 to-base-850 border border-base-700/80 shadow-md">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent">
+          <div className="card p-4 sm:p-6 bg-gradient-to-br from-base-900 via-base-900/90 to-base-850 border border-base-700/80 shadow-md min-w-0 max-w-full overflow-hidden box-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shrink-0">
                   ⚡
                 </div>
-                <div>
-                  <h3 className="font-display text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                <div className="min-w-0">
+                  <h3 className="font-display text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                     Weekly Team Workload & Pace
                   </h3>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
                     Target: <strong className="text-slate-800 dark:text-slate-200">80.0h</strong> collective team capacity this week
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="font-mono text-sm sm:text-base font-extrabold text-accent">
                   {(totalMinutesWeek / 60).toFixed(1)}h
                 </span>
@@ -381,7 +413,7 @@ export default function Dashboard() {
             </div>
 
             {/* Progress Track */}
-            <div className="w-full h-2.5 bg-base-800/60 rounded-full overflow-hidden p-0.5 border border-base-700/60">
+            <div className="w-full min-w-0 max-w-full h-2.5 bg-base-800/60 rounded-full overflow-hidden p-0.5 border border-base-700/60 box-border">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-400 transition-all duration-700 shadow-xs"
                 style={{ width: `${Math.min(100, Math.max(5, Math.round(((totalMinutesWeek / 60) / 80) * 100)))}%` }}
@@ -390,7 +422,7 @@ export default function Dashboard() {
           </div>
 
           {/* Visual Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0 max-w-full">
             <HoursPieChart title="Hours by project" data={byProject} />
             <HoursPieChart title="Hours by person" data={byPerson} />
           </div>
@@ -402,24 +434,24 @@ export default function Dashboard() {
           />
 
           {/* Registered Team Members & Detailed Hours Matrix */}
-          <div className="card p-4 sm:p-6 overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-base-800/80">
+          <div className="card p-4 sm:p-6 overflow-hidden min-w-0 max-w-full box-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-base-800/80 min-w-0">
               <div>
                 <h3 className="font-display text-base sm:text-lg font-bold text-base-100 flex items-center gap-2">
                   <span>👥</span> Registered Team Members & Activity ({memberStats.length})
                 </h3>
                 <p className="text-xs text-base-400 mt-0.5">
-                  Click on any member to view their complete performance profile, project breakdown, and work history.
+                  Click on any member to view KPIs, or use the Admin button beside their name to grant full admin permissions.
                 </p>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full min-w-0 max-w-full">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-base-800 text-[10px] font-mono uppercase tracking-wider text-base-400">
                     <th className="pb-3 pr-4 font-bold">Team Member</th>
-                    <th className="pb-3 px-3 font-bold">Role</th>
+                    <th className="pb-3 px-3 font-bold">Role & Access</th>
                     <th className="pb-3 px-3 font-bold text-right">Filtered Hours</th>
                     <th className="pb-3 px-3 font-bold text-right">All-Time Hours</th>
                     <th className="pb-3 px-3 font-bold text-center">Projects</th>
@@ -429,6 +461,8 @@ export default function Dashboard() {
                 <tbody className="divide-y divide-base-850/80">
                   {memberStats.map((member) => {
                     const initial = (member.full_name || member.email || '?').slice(0, 1).toUpperCase()
+                    const isSelf = user?.id === member.id
+
                     return (
                       <tr
                         key={member.id}
@@ -436,39 +470,65 @@ export default function Dashboard() {
                         className="hover:bg-base-850/70 transition-colors cursor-pointer group"
                         title="Click to view detailed member profile"
                       >
+                        {/* Member Identity */}
                         <td className="py-3 pr-4">
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-8 h-8 rounded-xl bg-accent/20 text-accent group-hover:bg-accent group-hover:text-base-950 transition-all flex items-center justify-center font-mono text-xs font-bold border border-accent/30 shrink-0 shadow-xs">
                               {initial}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <div className="font-bold text-base-100 group-hover:text-accent transition-colors truncate flex items-center gap-1.5">
                                 <span>{member.full_name || 'Member'}</span>
+                                {isSelf && (
+                                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">You</span>
+                                )}
                                 <span className="text-[10px] opacity-0 group-hover:opacity-100 text-accent transition-opacity">→</span>
                               </div>
                               <div className="text-[10px] text-base-400 truncate">{member.email || 'No email provided'}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
-                            member.role === 'admin'
-                              ? 'bg-accent/15 text-accent border-accent/30'
-                              : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                          }`}>
-                            {member.role || 'member'}
-                          </span>
+
+                        {/* Interactive Admin Role Switcher Button */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {isAdmin ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleUserRole(e, member)}
+                              disabled={updatingRole === member.id}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all active:scale-95 shadow-xs ${
+                                member.role === 'admin'
+                                  ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
+                                  : 'bg-base-800 hover:bg-accent/20 text-slate-300 hover:text-accent border-base-700 hover:border-accent/40'
+                              }`}
+                              title={member.role === 'admin' ? 'Click to demote to Member' : 'Click to grant full Admin privileges'}
+                            >
+                              <span>{member.role === 'admin' ? '⚡ Admin' : '👤 Member'}</span>
+                              <span className="text-[9px] opacity-70">
+                                {member.role === 'admin' ? '(toggle)' : '(make admin)'}
+                              </span>
+                            </button>
+                          ) : (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
+                              member.role === 'admin'
+                                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            }`}>
+                              {member.role === 'admin' ? 'Admin' : 'Member'}
+                            </span>
+                          )}
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-bold text-accent text-sm">
+
+                        <td className="py-3 px-3 text-right font-mono font-bold text-accent text-sm whitespace-nowrap">
                           {member.filteredHours}h
                         </td>
-                        <td className="py-3 px-3 text-right font-mono font-medium text-base-200">
+                        <td className="py-3 px-3 text-right font-mono font-medium text-base-200 whitespace-nowrap">
                           {member.totalHours}h
                         </td>
-                        <td className="py-3 px-3 text-center font-mono font-semibold text-base-300">
+                        <td className="py-3 px-3 text-center font-mono font-semibold text-base-300 whitespace-nowrap">
                           {member.projectsCount}
                         </td>
-                        <td className="py-3 pl-3 text-right font-mono text-[11px] text-base-400">
+                        <td className="py-3 pl-3 text-right font-mono text-[11px] text-base-400 whitespace-nowrap">
                           {member.lastActive}
                         </td>
                       </tr>
@@ -487,6 +547,11 @@ export default function Dashboard() {
           member={selectedMember}
           entries={entries}
           projects={projects}
+          onRoleChange={async (userId, newRole) => {
+            setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
+            setSelectedMember(prev => prev ? { ...prev, role: newRole } : null)
+            await updateUserProfileRole(userId, newRole)
+          }}
           onClose={() => setSelectedMember(null)}
         />
       )}

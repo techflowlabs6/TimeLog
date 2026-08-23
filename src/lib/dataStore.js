@@ -136,9 +136,37 @@ export function initLocalStorageIfEmpty() {
   }
 }
 
+// ── Ensure Remote Database Foreign Keys Always Exist ───────────
+let _syncedSupabaseSchema = false
+async function ensureRemoteForeignKeys() {
+  if (_syncedSupabaseSchema) return
+  _syncedSupabaseSchema = true
+
+  try {
+    for (const proj of DEFAULT_PROJECTS) {
+      await supabase.from('projects').upsert({
+        id: proj.id,
+        name: proj.name,
+        color_hex: proj.color_hex,
+        is_active: true
+      }, { onConflict: 'id' })
+    }
+
+    for (const prof of DEFAULT_PROFILES) {
+      await supabase.from('profiles').upsert({
+        id: prof.id,
+        full_name: prof.full_name,
+        email: prof.email,
+        role: prof.role
+      }, { onConflict: 'id' })
+    }
+  } catch (e) {}
+}
+
 // ── Multi-Account Data Fetcher ────────────────────────────────
 export async function fetchAllData() {
   initLocalStorageIfEmpty()
+  ensureRemoteForeignKeys()
 
   try {
     const [entriesRes, projectsRes, profilesRes] = await Promise.all([
@@ -151,25 +179,42 @@ export async function fetchAllData() {
     const remoteProjects = projectsRes.data || []
     const remoteProfiles = profilesRes.data || []
 
-    if (remoteEntries.length > 0 || remoteProjects.length > 0 || remoteProfiles.length > 0) {
-      // Merge remote profiles with known profiles map so all registered users are properly named
-      const profileMap = new Map()
-      DEFAULT_PROFILES.forEach(p => profileMap.set(p.id, p))
-      remoteProfiles.forEach(p => profileMap.set(p.id, p))
+    const profileMap = new Map()
+    DEFAULT_PROFILES.forEach(p => profileMap.set(p.id, p))
+    getLocal(LOCAL_PROFILES_KEY, []).forEach(p => profileMap.set(p.id, p))
+    remoteProfiles.forEach(p => profileMap.set(p.id, p))
 
-      // Also ensure projects are available
-      const projectMap = new Map()
-      DEFAULT_PROJECTS.forEach(p => projectMap.set(p.id, p))
-      remoteProjects.forEach(p => projectMap.set(p.id, p))
+    const projectMap = new Map()
+    DEFAULT_PROJECTS.forEach(p => projectMap.set(p.id, p))
+    getLocal(LOCAL_PROJECTS_KEY, []).forEach(p => projectMap.set(p.id, p))
+    remoteProjects.forEach(p => projectMap.set(p.id, p))
 
-      return {
-        entries: remoteEntries.length > 0 ? remoteEntries : getLocal(LOCAL_ENTRIES_KEY, generateSeedEntries()),
-        projects: Array.from(projectMap.values()),
-        profiles: Array.from(profileMap.values())
+    const entryMap = new Map()
+    const fallbackSeed = generateSeedEntries()
+    
+    if (remoteEntries.length > 0) {
+      remoteEntries.forEach(e => entryMap.set(e.id, e))
+    } else {
+      fallbackSeed.forEach(e => entryMap.set(e.id, e))
+    }
+
+    getLocal(LOCAL_ENTRIES_KEY, []).forEach(e => {
+      if (!entryMap.has(e.id)) {
+        entryMap.set(e.id, e)
       }
+    })
+
+    const finalEntries = Array.from(entryMap.values()).sort((a, b) => {
+      return (b.entry_date || '').localeCompare(a.entry_date || '')
+    })
+
+    return {
+      entries: finalEntries,
+      projects: Array.from(projectMap.values()),
+      profiles: Array.from(profileMap.values())
     }
   } catch (e) {
-    console.warn('Remote Supabase fetch exception, using local store:', e)
+    console.warn('Supabase fetch exception, using local store:', e)
   }
 
   return {
@@ -179,11 +224,47 @@ export async function fetchAllData() {
   }
 }
 
+// ── Profile Role Management (Admin DB Role Granting) ───────────
+export async function updateUserProfileRole(userId, newRole) {
+  initLocalStorageIfEmpty()
+
+  // 1. Direct write to Supabase profiles table
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId)
+      .select()
+      .single()
+
+    if (!error && data) {
+      const current = getLocal(LOCAL_PROFILES_KEY, DEFAULT_PROFILES)
+      const updated = current.map(p => p.id === userId ? { ...p, role: newRole } : p)
+      setLocal(LOCAL_PROFILES_KEY, updated)
+      return { data, error: null }
+    }
+  } catch (e) {
+    console.warn('Remote Supabase role update exception:', e)
+  }
+
+  // 2. Local store update fallback
+  const current = getLocal(LOCAL_PROFILES_KEY, DEFAULT_PROFILES)
+  const updated = current.map(p => p.id === userId ? { ...p, role: newRole } : p)
+  setLocal(LOCAL_PROFILES_KEY, updated)
+
+  return { data: { id: userId, role: newRole }, error: null }
+}
+
 export async function fetchProjects() {
   initLocalStorageIfEmpty()
   try {
     const { data } = await supabase.from('projects').select('*').order('created_at')
-    if (data && data.length > 0) return data
+    if (data && data.length > 0) {
+      const pMap = new Map()
+      DEFAULT_PROJECTS.forEach(p => pMap.set(p.id, p))
+      data.forEach(p => pMap.set(p.id, p))
+      return Array.from(pMap.values())
+    }
   } catch (e) {}
   return getLocal(LOCAL_PROJECTS_KEY, DEFAULT_PROJECTS)
 }
@@ -205,12 +286,11 @@ export async function fetchUserEntries(userId) {
   return all.filter(e => e.user_id === userId || !userId)
 }
 
-// ── Multi-Account Save Entry (Guarantees Profile Existence) ────
+// ── Multi-Account Save Entry ──────────────────────────────────
 export async function saveTimeEntry(entry) {
   initLocalStorageIfEmpty()
 
-  // Ensure profile exists in Supabase if user logged in
-  if (entry.user_id && entry.user_id.length > 10) {
+  if (entry.user_id) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -219,7 +299,8 @@ export async function saveTimeEntry(entry) {
             id: user.id,
             full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Team Member',
             email: user.email,
-            avatar_url: user.user_metadata?.avatar_url || null
+            avatar_url: user.user_metadata?.avatar_url || null,
+            role: 'member'
           },
           { onConflict: 'id' }
         )
@@ -227,25 +308,39 @@ export async function saveTimeEntry(entry) {
     } catch (e) {}
   }
 
-  // Insert to remote database
+  if (entry.project_id) {
+    try {
+      const proj = DEFAULT_PROJECTS.find(p => p.id === entry.project_id)
+      if (proj) {
+        await supabase.from('projects').upsert({
+          id: proj.id,
+          name: proj.name,
+          color_hex: proj.color_hex,
+          is_active: true
+        }, { onConflict: 'id' })
+      }
+    } catch (e) {}
+  }
+
+  let savedData = null
+
   try {
     const { data, error } = await supabase.from('time_entries').insert(entry).select().single()
     if (!error && data) {
-      const current = getLocal(LOCAL_ENTRIES_KEY, [])
-      setLocal(LOCAL_ENTRIES_KEY, [data, ...current])
-      return { data, error: null }
+      savedData = data
     }
   } catch (e) {}
 
-  // Fallback to local store
-  const newEntry = {
+  const newEntry = savedData || {
     ...entry,
     id: entry.id || `ent-${Date.now()}`,
     created_at: new Date().toISOString()
   }
+
   const current = getLocal(LOCAL_ENTRIES_KEY, generateSeedEntries())
-  const updated = [newEntry, ...current]
+  const updated = [newEntry, ...current.filter(e => e.id !== newEntry.id)]
   setLocal(LOCAL_ENTRIES_KEY, updated)
+
   return { data: newEntry, error: null }
 }
 
@@ -285,7 +380,7 @@ export async function addProjectItem(project) {
 
   const newProj = {
     ...project,
-    id: `proj-${Date.now()}`,
+    id: project.id || `proj-${Date.now()}`,
     is_active: true,
     created_at: new Date().toISOString()
   }

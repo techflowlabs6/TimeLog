@@ -10,7 +10,7 @@ const links = [
   { to: '/roadmap', label: 'Roadmap', icon: '↗' }
 ]
 
-export default function MobileHeader() {
+export default function MobileHeader({ onOpenProfile }) {
   const { profile, isAdmin, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [isOpen, setIsOpen] = useState(false)
@@ -37,10 +37,12 @@ export default function MobileHeader() {
   const currentLink = links.find((l) => l.to === location.pathname) ||
     (location.pathname === '/admin/projects' ? { label: 'Projects (Admin)' } : { label: 'TimeLog' })
 
+  const initial = (profile?.full_name || profile?.email || 'NR').slice(0, 2).toUpperCase()
+
   return (
     <>
       {/* Top Header Bar for Mobile & Tablet (< 1024px) */}
-      <header className="lg:hidden sticky top-0 z-40 bg-base-950/95 backdrop-blur-md border-b border-base-800 px-4 py-3 flex items-center justify-between">
+      <header className="lg:hidden sticky top-0 z-40 bg-base-950/95 backdrop-blur-md border-b border-base-800 px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsOpen(true)}
@@ -78,9 +80,16 @@ export default function MobileHeader() {
               </svg>
             )}
           </button>
-          <div className="w-8 h-8 rounded-full bg-accent/20 text-accent flex items-center justify-center font-mono text-xs font-semibold border border-accent/30">
-            {(profile?.full_name || profile?.email || '?').slice(0, 1).toUpperCase()}
-          </div>
+
+          {/* Interactive Profile Avatar Button */}
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="w-8 h-8 rounded-full bg-accent/20 hover:bg-accent hover:text-base-950 text-accent flex items-center justify-center font-mono text-xs font-bold border border-accent/40 transition-all shadow-xs active:scale-95"
+            title="Open Performance Profile"
+          >
+            {initial}
+          </button>
         </div>
       </header>
 
@@ -151,18 +160,29 @@ export default function MobileHeader() {
             </div>
 
             {/* Profile & Sign Out Section */}
-            <div className="pt-4 border-t border-base-800">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-full bg-accent/20 text-accent flex items-center justify-center font-mono text-xs font-semibold border border-accent/30 shrink-0">
-                  {(profile?.full_name || profile?.email || '?').slice(0, 1).toUpperCase()}
+            <div className="pt-4 border-t border-base-800 space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false)
+                  if (onOpenProfile) onOpenProfile()
+                }}
+                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-base-850 border border-transparent hover:border-base-700 transition-all text-left group"
+              >
+                <div className="w-9 h-9 rounded-full bg-accent/20 text-accent group-hover:bg-accent group-hover:text-base-950 flex items-center justify-center font-mono text-xs font-bold border border-accent/30 shrink-0 transition-colors">
+                  {initial}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium text-base-100 truncate">
+                  <div className="text-sm font-bold text-base-100 truncate group-hover:text-accent transition-colors">
                     {profile?.full_name || 'Team Member'}
                   </div>
-                  <div className="text-xs text-base-400 truncate">{profile?.role || 'Member'}</div>
+                  <div className="text-xs text-base-400 truncate flex items-center gap-1.5">
+                    <span>{profile?.role === 'admin' ? '👑 Admin' : '👤 Member'}</span>
+                    <span className="text-[10px] text-accent">• View KPIs</span>
+                  </div>
                 </div>
-              </div>
+              </button>
+
               <button
                 onClick={signOut}
                 className="w-full flex items-center justify-center gap-2 text-xs font-medium text-red-400 hover:text-red-300 transition-colors px-3 py-2.5 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10"

@@ -1,5 +1,7 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { exportToCSV } from '../lib/exportUtils'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 
 function startOfWeek() {
   const d = new Date()
@@ -14,7 +16,12 @@ function startOfMonth() {
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
 }
 
-export default function MemberProfileModal({ member, entries = [], projects = [], onClose }) {
+export default function MemberProfileModal({ member, entries = [], projects = [], onRoleChange, onClose }) {
+  const { user, isAdmin } = useAuth()
+  const toast = useToast()
+  const [currentRole, setCurrentRole] = useState(member?.role || 'member')
+  const [updatingRole, setUpdatingRole] = useState(false)
+
   const weekStart = useMemo(() => startOfWeek(), [])
   const monthStart = useMemo(() => startOfMonth(), [])
 
@@ -26,6 +33,10 @@ export default function MemberProfileModal({ member, entries = [], projects = []
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose])
+
+  useEffect(() => {
+    if (member?.role) setCurrentRole(member.role)
+  }, [member])
 
   const projectMap = useMemo(() => Object.fromEntries(projects.map(p => [p.id, p])), [projects])
 
@@ -82,6 +93,21 @@ export default function MemberProfileModal({ member, entries = [], projects = []
   const weekHoursFormatted = (weekMinutes / 60).toFixed(1)
   const monthHoursFormatted = (monthMinutes / 60).toFixed(1)
 
+  async function handleToggleRole() {
+    const nextRole = currentRole === 'admin' ? 'member' : 'admin'
+    setUpdatingRole(true)
+    setCurrentRole(nextRole)
+    if (onRoleChange) {
+      await onRoleChange(member.id, nextRole)
+    }
+    setUpdatingRole(false)
+    if (nextRole === 'admin') {
+      toast.success(`👑 Granted Admin privileges to ${member.full_name || member.email}!`)
+    } else {
+      toast.info(`👤 Changed ${member.full_name || member.email} to Member role`)
+    }
+  }
+
   function handleExportMemberReport() {
     const headers = [
       { key: 'date', label: 'Date' },
@@ -97,6 +123,7 @@ export default function MemberProfileModal({ member, entries = [], projects = []
     }))
     const nameSlug = (member.full_name || 'member').toLowerCase().replace(/\s+/g, '_')
     exportToCSV(`timelog_${nameSlug}_activity`, headers, exportRows)
+    toast.success('📁 Member performance report downloaded!')
   }
 
   return (
@@ -129,15 +156,36 @@ export default function MemberProfileModal({ member, entries = [], projects = []
                 <h2 className="text-xl sm:text-2xl font-display font-bold text-base-100 truncate">
                   {member.full_name || 'Team Member'}
                 </h2>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border uppercase tracking-wide ${
-                    member.role === 'admin'
-                      ? 'bg-accent/15 text-accent border-accent/30'
-                      : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                  }`}
-                >
-                  {member.role === 'admin' ? '⚙ Admin' : '👤 Member'}
-                </span>
+
+                {/* Role Switcher or Badge */}
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    onClick={handleToggleRole}
+                    disabled={updatingRole}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold border transition-all active:scale-95 shadow-xs ${
+                      currentRole === 'admin'
+                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
+                        : 'bg-base-800 hover:bg-accent/20 text-slate-300 hover:text-accent border-base-700 hover:border-accent/40'
+                    }`}
+                    title="Click to toggle Admin / Member role"
+                  >
+                    <span>{currentRole === 'admin' ? '👑 Admin' : '👤 Member'}</span>
+                    <span className="text-[9px] opacity-70 underline">
+                      {currentRole === 'admin' ? 'Change to Member' : 'Make Admin'}
+                    </span>
+                  </button>
+                ) : (
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border uppercase tracking-wide ${
+                      currentRole === 'admin'
+                        ? 'bg-accent/15 text-accent border-accent/30'
+                        : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                    }`}
+                  >
+                    {currentRole === 'admin' ? '⚙ Admin' : '👤 Member'}
+                  </span>
+                )}
               </div>
 
               <p className="text-xs text-base-400 font-medium mt-1 truncate">
