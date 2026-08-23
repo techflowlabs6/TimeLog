@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState } from 'react'
 import { exportToCSV } from '../lib/exportUtils'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { ALL_ADMIN_PERMISSIONS } from '../lib/dataStore'
 
 function startOfWeek() {
   const d = new Date()
@@ -20,6 +21,13 @@ export default function MemberProfileModal({ member, entries = [], projects = []
   const { user, isAdmin } = useAuth()
   const toast = useToast()
   const [currentRole, setCurrentRole] = useState(member?.role || 'member')
+  const [selectedPermissions, setSelectedPermissions] = useState(
+    member?.permissions?.length > 0
+      ? member.permissions
+      : member?.role === 'admin'
+      ? ALL_ADMIN_PERMISSIONS.map(p => p.key)
+      : []
+  )
   const [updatingRole, setUpdatingRole] = useState(false)
 
   const weekStart = useMemo(() => startOfWeek(), [])
@@ -35,7 +43,16 @@ export default function MemberProfileModal({ member, entries = [], projects = []
   }, [onClose])
 
   useEffect(() => {
-    if (member?.role) setCurrentRole(member.role)
+    if (member?.role) {
+      setCurrentRole(member.role)
+      setSelectedPermissions(
+        member.permissions?.length > 0
+          ? member.permissions
+          : member.role === 'admin'
+          ? ALL_ADMIN_PERMISSIONS.map(p => p.key)
+          : []
+      )
+    }
   }, [member])
 
   const projectMap = useMemo(() => Object.fromEntries(projects.map(p => [p.id, p])), [projects])
@@ -63,7 +80,7 @@ export default function MemberProfileModal({ member, entries = [], projects = []
       .reduce((s, e) => s + e.duration_minutes, 0)
   }, [memberEntries, monthStart])
 
-  // Project Breakdown for this person
+  // Project Breakdown
   const projectBreakdown = useMemo(() => {
     const map = {}
     memberEntries.forEach(e => {
@@ -88,23 +105,61 @@ export default function MemberProfileModal({ member, entries = [], projects = []
 
   if (!member) return null
 
-  const initial = (member.full_name || member.email || '?').slice(0, 1).toUpperCase()
+  const initial = (member.full_name || member.email || 'M').slice(0, 1).toUpperCase()
   const totalHoursFormatted = (totalMinutes / 60).toFixed(1)
   const weekHoursFormatted = (weekMinutes / 60).toFixed(1)
   const monthHoursFormatted = (monthMinutes / 60).toFixed(1)
 
-  async function handleToggleRole() {
-    const nextRole = currentRole === 'admin' ? 'member' : 'admin'
+  function togglePermission(key) {
+    setSelectedPermissions(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+      return next
+    })
+  }
+
+  function selectAllPermissions() {
+    setSelectedPermissions(ALL_ADMIN_PERMISSIONS.map(p => p.key))
+  }
+
+  function clearAllPermissions() {
+    setSelectedPermissions([])
+  }
+
+  async function handleSaveRoleAndPermissions() {
     setUpdatingRole(true)
-    setCurrentRole(nextRole)
+    const effectiveRole = currentRole
+    const effectivePermissions = effectiveRole === 'admin'
+      ? (selectedPermissions.length > 0 ? selectedPermissions : ALL_ADMIN_PERMISSIONS.map(p => p.key))
+      : []
+
     if (onRoleChange) {
-      await onRoleChange(member.id, nextRole)
+      await onRoleChange(member.id, effectiveRole, effectivePermissions)
     }
     setUpdatingRole(false)
-    if (nextRole === 'admin') {
-      toast.success(`👑 Granted Admin privileges to ${member.full_name || member.email}!`)
+
+    if (effectiveRole === 'admin') {
+      toast.success(`👑 Saved all Admin permissions for ${member.full_name || member.email}!`)
     } else {
-      toast.info(`👤 Changed ${member.full_name || member.email} to Member role`)
+      toast.info(`👤 Changed ${member.full_name || member.email} to Standard Member`)
+    }
+  }
+
+  async function handleQuickToggleRole() {
+    const nextRole = currentRole === 'admin' ? 'member' : 'admin'
+    const nextPerms = nextRole === 'admin' ? ALL_ADMIN_PERMISSIONS.map(p => p.key) : []
+    setCurrentRole(nextRole)
+    setSelectedPermissions(nextPerms)
+    setUpdatingRole(true)
+
+    if (onRoleChange) {
+      await onRoleChange(member.id, nextRole, nextPerms)
+    }
+    setUpdatingRole(false)
+
+    if (nextRole === 'admin') {
+      toast.success(`👑 Granted full Admin privileges to ${member.full_name || member.email}!`)
+    } else {
+      toast.info(`👤 Set ${member.full_name || member.email} to Member role`)
     }
   }
 
@@ -131,11 +186,11 @@ export default function MemberProfileModal({ member, entries = [], projects = []
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
       />
 
       {/* Modal Card */}
-      <div className="relative w-full max-w-2xl max-h-[90vh] bg-base-900 border border-base-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl max-h-[92vh] bg-base-900 border border-base-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200 box-border">
         {/* Header Profile Section */}
         <div className="p-5 sm:p-6 border-b border-base-800 bg-gradient-to-br from-base-850 via-base-900 to-base-900 relative">
           <button
@@ -157,11 +212,11 @@ export default function MemberProfileModal({ member, entries = [], projects = []
                   {member.full_name || 'Team Member'}
                 </h2>
 
-                {/* Role Switcher or Badge */}
+                {/* Role Switcher */}
                 {isAdmin ? (
                   <button
                     type="button"
-                    onClick={handleToggleRole}
+                    onClick={handleQuickToggleRole}
                     disabled={updatingRole}
                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold border transition-all active:scale-95 shadow-xs ${
                       currentRole === 'admin'
@@ -172,7 +227,7 @@ export default function MemberProfileModal({ member, entries = [], projects = []
                   >
                     <span>{currentRole === 'admin' ? '👑 Admin' : '👤 Member'}</span>
                     <span className="text-[9px] opacity-70 underline">
-                      {currentRole === 'admin' ? 'Change to Member' : 'Make Admin'}
+                      {currentRole === 'admin' ? 'Toggle to Member' : 'Grant Admin'}
                     </span>
                   </button>
                 ) : (
@@ -206,8 +261,95 @@ export default function MemberProfileModal({ member, entries = [], projects = []
 
         {/* Scrollable Content Body */}
         <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 divide-y divide-base-800/80">
+          {/* Admin Capabilities Matrix & Checkbox Controls (When logged in as Admin) */}
+          {isAdmin && (
+            <div className="pb-2 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="font-display text-sm sm:text-base font-bold text-base-100 flex items-center gap-2">
+                    <span>🛡️</span> Security & Admin Privileges Matrix
+                  </h3>
+                  <p className="text-xs text-base-400 mt-0.5">
+                    Select features granted to this user. All checked capabilities synchronize directly to the database.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentRole('admin')
+                      selectAllPermissions()
+                    }}
+                    className="text-[10px] font-mono font-bold px-2 py-1 rounded-lg bg-accent/15 text-accent hover:bg-accent/25 border border-accent/30 transition-all"
+                  >
+                    Select All (Full Admin)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentRole('member')
+                      clearAllPermissions()
+                    }}
+                    className="text-[10px] font-mono font-bold px-2 py-1 rounded-lg bg-base-800 text-base-400 hover:text-base-100 transition-all"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+
+              {/* Checkbox Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                {ALL_ADMIN_PERMISSIONS.map(perm => {
+                  const isChecked = currentRole === 'admin' && selectedPermissions.includes(perm.key)
+                  return (
+                    <label
+                      key={perm.key}
+                      className={`flex items-start gap-3 p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                        isChecked
+                          ? 'bg-accent/10 border-accent/40 shadow-xs'
+                          : 'bg-base-850/50 border-base-800 hover:border-base-700'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          if (currentRole !== 'admin') setCurrentRole('admin')
+                          togglePermission(perm.key)
+                        }}
+                        className="w-4 h-4 mt-0.5 rounded border-base-700 text-accent focus:ring-accent accent-accent cursor-pointer shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className={`text-xs font-bold ${isChecked ? 'text-accent' : 'text-base-200'}`}>
+                          {perm.label}
+                        </div>
+                        <div className="text-[10px] text-base-400 line-clamp-1 mt-0.5">
+                          {perm.description}
+                        </div>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveRoleAndPermissions}
+                  disabled={updatingRole}
+                  className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-soft text-base-950 font-bold text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {updatingRole ? 'Saving to Database…' : 'Save Privileges to Database'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* KPI Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-base-850 border border-base-700/80">
               <div className="text-[10px] font-mono uppercase tracking-wider text-base-400 font-bold">All-Time</div>
               <div className="text-xl sm:text-2xl font-mono font-extrabold text-accent mt-1">{totalHoursFormatted}h</div>

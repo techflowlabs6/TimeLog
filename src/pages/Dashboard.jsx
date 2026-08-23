@@ -547,10 +547,10 @@ export default function Dashboard() {
           member={selectedMember}
           entries={entries}
           projects={projects}
-          onRoleChange={async (userId, newRole) => {
-            setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
-            setSelectedMember(prev => prev ? { ...prev, role: newRole } : null)
-            await updateUserProfileRole(userId, newRole)
+          onRoleChange={async (userId, newRole, newPermissions) => {
+            setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole, permissions: newPermissions } : p))
+            setSelectedMember(prev => prev ? { ...prev, role: newRole, permissions: newPermissions } : null)
+            await updateUserProfileRole(userId, newRole, newPermissions)
           }}
           onClose={() => setSelectedMember(null)}
         />

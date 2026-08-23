@@ -85,8 +85,8 @@ function Shell({ children }) {
           member={profile}
           entries={allEntries}
           projects={allProjects}
-          onRoleChange={async (userId, newRole) => {
-            await updateUserProfileRole(userId, newRole)
+          onRoleChange={async (userId, newRole, newPermissions) => {
+            await updateUserProfileRole(userId, newRole, newPermissions)
           }}
           onClose={() => setProfileModalOpen(false)}
         />

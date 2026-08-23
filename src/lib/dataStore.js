@@ -5,11 +5,44 @@ const LOCAL_PROFILES_KEY = 'timelog_local_profiles_v2'
 const LOCAL_ENTRIES_KEY = 'timelog_local_entries_v2'
 const LOCAL_ROADMAP_KEY = 'timelog_local_roadmap_v2'
 
+export const ALL_ADMIN_PERMISSIONS = [
+  { key: 'manage_projects', label: 'Project Management', description: 'Create, archive, color-tag, and delete team projects' },
+  { key: 'manage_roadmap', label: 'Product Roadmap Milestones', description: 'Add new milestones, edit statuses, delete deliverables' },
+  { key: 'manage_roles', label: 'Admin Role Administration', description: 'Grant or revoke admin access for any team member' },
+  { key: 'view_all_analytics', label: 'Full Team Analytics', description: 'Access contributor matrices and productivity metrics' },
+  { key: 'export_data', label: 'Advanced Data Export', description: 'Export full team CSV timesheet reports' },
+  { key: 'edit_entries', label: 'Timesheet Moderation', description: 'Edit notes and adjust logged records across the team' }
+]
+
 export const DEFAULT_PROFILES = [
-  { id: 'usr-1', full_name: 'Naveen Reddy', email: 'nrkb1998@gmail.com', role: 'admin' },
-  { id: 'usr-2', full_name: 'Sushma K.', email: 'sushma@fashion.com', role: 'admin' },
-  { id: 'usr-3', full_name: 'Alex Chen', email: 'alex@design.io', role: 'member' },
-  { id: 'usr-4', full_name: 'Priya Patel', email: 'priya@techflowlabs.com', role: 'member' }
+  {
+    id: 'usr-1',
+    full_name: 'Naveen Reddy',
+    email: 'nrkb1998@gmail.com',
+    role: 'admin',
+    permissions: ALL_ADMIN_PERMISSIONS.map(p => p.key)
+  },
+  {
+    id: 'usr-2',
+    full_name: 'Sushma K.',
+    email: 'sushma@fashion.com',
+    role: 'admin',
+    permissions: ALL_ADMIN_PERMISSIONS.map(p => p.key)
+  },
+  {
+    id: 'usr-3',
+    full_name: 'Alex Chen',
+    email: 'alex@design.io',
+    role: 'member',
+    permissions: []
+  },
+  {
+    id: 'usr-4',
+    full_name: 'Priya Patel',
+    email: 'priya@techflowlabs.com',
+    role: 'member',
+    permissions: []
+  }
 ]
 
 export const DEFAULT_PROJECTS = [
@@ -157,7 +190,8 @@ async function ensureRemoteForeignKeys() {
         id: prof.id,
         full_name: prof.full_name,
         email: prof.email,
-        role: prof.role
+        role: prof.role,
+        permissions: prof.permissions || []
       }, { onConflict: 'id' })
     }
   } catch (e) {}
@@ -224,9 +258,13 @@ export async function fetchAllData() {
   }
 }
 
-// ── Profile Role Management (Admin DB Role Granting) ───────────
-export async function updateUserProfileRole(userId, newRole) {
+// ── Profile Role & Permissions Management (Direct DB Persistence) ──
+export async function updateUserProfileRole(userId, newRole, customPermissions = null) {
   initLocalStorageIfEmpty()
+
+  const permissions = customPermissions || (
+    newRole === 'admin' ? ALL_ADMIN_PERMISSIONS.map(p => p.key) : []
+  )
 
   const localProfiles = getLocal(LOCAL_PROFILES_KEY, DEFAULT_PROFILES)
   const existingLocal = localProfiles.find(p => p.id === userId)
@@ -248,7 +286,8 @@ export async function updateUserProfileRole(userId, newRole) {
       id: targetId,
       full_name: remoteProfile?.full_name || existingLocal?.full_name || 'Team Member',
       email: remoteProfile?.email || existingLocal?.email || '',
-      role: newRole
+      role: newRole,
+      permissions
     }
 
     const { data, error } = await supabase
@@ -260,7 +299,7 @@ export async function updateUserProfileRole(userId, newRole) {
     if (!error && data) {
       const updated = localProfiles.map(p =>
         p.id === userId || p.id === targetId || (p.email && p.email === data.email)
-          ? { ...p, ...data, role: newRole }
+          ? { ...p, ...data, role: newRole, permissions }
           : p
       )
       setLocal(LOCAL_PROFILES_KEY, updated)
@@ -271,10 +310,10 @@ export async function updateUserProfileRole(userId, newRole) {
   }
 
   // 2. Local store update fallback
-  const updated = localProfiles.map(p => (p.id === userId ? { ...p, role: newRole } : p))
+  const updated = localProfiles.map(p => (p.id === userId ? { ...p, role: newRole, permissions } : p))
   setLocal(LOCAL_PROFILES_KEY, updated)
 
-  return { data: { id: userId, role: newRole }, error: null }
+  return { data: { id: userId, role: newRole, permissions }, error: null }
 }
 
 export async function fetchProjects() {
@@ -322,7 +361,8 @@ export async function saveTimeEntry(entry) {
             full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Team Member',
             email: user.email,
             avatar_url: user.user_metadata?.avatar_url || null,
-            role: user.email === 'nrkb1998@gmail.com' ? 'admin' : 'member'
+            role: user.email === 'nrkb1998@gmail.com' ? 'admin' : 'member',
+            permissions: user.email === 'nrkb1998@gmail.com' ? ALL_ADMIN_PERMISSIONS.map(p => p.key) : []
           },
           { onConflict: 'id' }
         )
