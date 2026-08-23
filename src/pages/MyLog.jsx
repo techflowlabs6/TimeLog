@@ -47,7 +47,7 @@ export default function MyLog() {
 
   const projectMap = Object.fromEntries(projects.map((p) => [p.id, p]))
 
-  // ── Search filter ──────────────────────────────────────────
+  // Search filter
   const filtered = useMemo(() => {
     if (!search.trim()) return entries
     const q = search.toLowerCase()
@@ -58,7 +58,7 @@ export default function MyLog() {
     )
   }, [entries, search, projectMap])
 
-  // ── Computed duration for edit form ───────────────────────
+  // Computed duration for edit form
   const editDurationMinutes = useMemo(() => {
     if (editForm.mode === 'range') {
       if (!editForm.start_time || !editForm.end_time) return 0
@@ -115,12 +115,10 @@ export default function MyLog() {
     toast.success('📁 Personal CSV export downloaded!')
   }
 
-  // ── Inline edit form row / card ────────────────────────────
   function EditForm({ entry, isMobile }) {
     const inputCls = 'w-full min-w-0 max-w-full box-border bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs font-semibold text-base-100 outline-none transition-colors'
     return (
       <div className={`flex flex-col gap-3 min-w-0 max-w-full overflow-hidden ${isMobile ? '' : 'p-3'}`}>
-        {/* Row 1: Date + Project */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 min-w-0 max-w-full">
           <div className="w-full min-w-0 max-w-full">
             <div className="label-eyebrow text-[9px] mb-1">Date</div>
@@ -144,7 +142,6 @@ export default function MyLog() {
           </div>
         </div>
 
-        {/* Row 2: Mode toggle */}
         <div className="grid grid-cols-2 p-0.5 bg-base-850 rounded-xl border border-base-700 gap-0.5 min-w-0 max-w-full overflow-hidden box-border">
           {['manual', 'range'].map(m => (
             <button
@@ -162,7 +159,6 @@ export default function MyLog() {
           ))}
         </div>
 
-        {/* Row 3: Duration input */}
         {editForm.mode === 'manual' ? (
           <div className="w-full min-w-0 max-w-full">
             <div className="label-eyebrow text-[9px] mb-1">Hours</div>
@@ -197,13 +193,11 @@ export default function MyLog() {
           </div>
         )}
 
-        {/* Duration preview */}
         <div className="flex items-center justify-between bg-base-850/80 border border-base-800 rounded-xl px-3 py-2 text-xs text-base-300 min-w-0 max-w-full box-border">
           <span>Calculated Duration:</span>
           <span className="text-accent font-mono font-bold">{(editDurationMinutes / 60).toFixed(2)}h</span>
         </div>
 
-        {/* Notes */}
         <div className="w-full min-w-0 max-w-full">
           <div className="label-eyebrow text-[9px] mb-1">Notes</div>
           <input
@@ -214,7 +208,6 @@ export default function MyLog() {
           />
         </div>
 
-        {/* Action buttons */}
         <div className="flex gap-2 justify-end pt-1 min-w-0">
           <button
             onClick={() => setEditingId(null)}
@@ -235,7 +228,7 @@ export default function MyLog() {
 
   return (
     <div className="space-y-4 sm:space-y-6 min-w-0 max-w-full overflow-hidden">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
         <div>
           <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-base-100">My Entries</h1>
@@ -244,7 +237,7 @@ export default function MyLog() {
         <button
           onClick={handleExportCSV}
           disabled={entries.length === 0}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-base-850 hover:bg-base-800 text-accent border border-accent/25 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40 shadow-xs active:scale-95"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-base-850 hover:bg-base-800 text-accent border border-accent/25 px-4 py-2.5 rounded-2xl text-xs font-semibold transition-colors disabled:opacity-40 shadow-xs active:scale-95"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -253,7 +246,7 @@ export default function MyLog() {
         </button>
       </div>
 
-      {/* ── Search Bar ── */}
+      {/* Search Bar */}
       <div className="relative w-full min-w-0 max-w-full">
         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
           <svg className="w-4 h-4 text-base-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,7 +272,6 @@ export default function MyLog() {
         )}
       </div>
 
-      {/* ── Search result count ── */}
       {search && (
         <p className="text-xs text-base-400 font-mono -mt-2">
           {filtered.length} of {entries.length} entries match
@@ -298,9 +290,9 @@ export default function MyLog() {
           No entries match <span className="text-accent font-semibold">"{search}"</span>. Try a different search term.
         </div>
       ) : (
-        <>
+        <div className="p-[1.5px] rounded-3xl bg-gradient-to-br from-indigo-500/30 via-purple-500/20 to-sky-500/30 shadow-lg min-w-0 max-w-full box-border">
           {/* Desktop Table View */}
-          <div className="card overflow-hidden hidden sm:block shadow-md">
+          <div className="card overflow-hidden hidden sm:block shadow-md bg-base-900/95 backdrop-blur-xl rounded-[22px] border-0">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -362,12 +354,12 @@ export default function MyLog() {
           </div>
 
           {/* Mobile Cards View */}
-          <div className="space-y-3 sm:hidden min-w-0 max-w-full">
+          <div className="space-y-3 sm:hidden p-2 min-w-0 max-w-full bg-base-900/95 backdrop-blur-xl rounded-[22px]">
             {filtered.map((e) => {
               const isEditing = editingId === e.id
               const p = projectMap[e.project_id]
               return (
-                <div key={e.id} className="card p-4 space-y-3 min-w-0 max-w-full overflow-hidden shadow-sm">
+                <div key={e.id} className="card p-4 space-y-3 min-w-0 max-w-full overflow-hidden shadow-sm bg-base-850/80 border border-base-700/60">
                   {isEditing ? (
                     <EditForm entry={e} isMobile={true} />
                   ) : (
@@ -405,7 +397,7 @@ export default function MyLog() {
               )
             })}
           </div>
-        </>
+        </div>
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchAllData, updateUserProfileRole } from '../lib/dataStore'
+import { fetchAllData, updateUserProfileRole, ALL_ADMIN_PERMISSIONS } from '../lib/dataStore'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import StatCard from '../components/StatCard'
@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
+  const [activePreset, setActivePreset] = useState('all')
   const [selectedMember, setSelectedMember] = useState(null)
   const [updatingRole, setUpdatingRole] = useState(null)
 
@@ -63,6 +64,8 @@ export default function Dashboard() {
       return true
     })
   }, [entries, dateFrom, dateTo, projectFilter])
+
+  const isFilterActive = !!(dateFrom || dateTo || projectFilter !== 'all')
 
   const projectMap = useMemo(() => Object.fromEntries(projects.map((p) => [p.id, p])), [projects])
   const profileMap = useMemo(() => Object.fromEntries(profiles.map((p) => [p.id, p])), [profiles])
@@ -120,21 +123,34 @@ export default function Dashboard() {
         lastActive: lastEntry,
         entriesCount: userEntries.length
       }
-    }).sort((a, b) => parseFloat(b.totalHours) - parseFloat(a.totalHours))
+    }).sort((a, b) => parseFloat(b.filteredHours) - parseFloat(a.filteredHours) || parseFloat(b.totalHours) - parseFloat(a.totalHours))
   }, [profiles, entries, filtered])
 
-  const totalMinutesAllTime = entries.reduce((s, e) => s + e.duration_minutes, 0)
+  // Dynamic KPI calculations based on active filters
+  const totalFilteredMinutes = useMemo(() => {
+    return filtered.reduce((s, e) => s + e.duration_minutes, 0)
+  }, [filtered])
+
+  const totalMinutesAllTime = useMemo(() => {
+    return entries.reduce((s, e) => s + e.duration_minutes, 0)
+  }, [entries])
+
   const weekStart = toISODate(startOfWeek())
   const monthStart = toISODate(startOfMonth())
-  const totalMinutesWeek = entries
-    .filter((e) => e.entry_date >= weekStart)
-    .reduce((s, e) => s + e.duration_minutes, 0)
-  const totalMinutesMonth = entries
-    .filter((e) => e.entry_date >= monthStart)
-    .reduce((s, e) => s + e.duration_minutes, 0)
+  const totalMinutesWeek = useMemo(() => {
+    return entries
+      .filter((e) => e.entry_date >= weekStart)
+      .reduce((s, e) => s + e.duration_minutes, 0)
+  }, [entries, weekStart])
 
-  const activeProjectsCount = projects.filter((p) => p.is_active).length
-  const activeMembersCount = profiles.length || new Set(entries.map((e) => e.user_id)).size
+  const totalMinutesMonth = useMemo(() => {
+    return entries
+      .filter((e) => e.entry_date >= monthStart)
+      .reduce((s, e) => s + e.duration_minutes, 0)
+  }, [entries, monthStart])
+
+  const activeProjectsInFilter = byProject.length
+  const activeMembersInFilter = memberStats.filter(m => parseFloat(m.filteredHours) > 0).length
 
   const fmtH = (m) => (m / 60).toFixed(1) + 'h'
 
@@ -165,6 +181,7 @@ export default function Dashboard() {
   }
 
   function setPreset(type) {
+    setActivePreset(type)
     const today = new Date()
     if (type === 'all') {
       setDateFrom('')
@@ -186,13 +203,14 @@ export default function Dashboard() {
   async function handleToggleUserRole(e, member) {
     e.stopPropagation()
     const nextRole = member.role === 'admin' ? 'member' : 'admin'
+    const nextPerms = nextRole === 'admin' ? ALL_ADMIN_PERMISSIONS.map(p => p.key) : []
     setUpdatingRole(member.id)
 
     setProfiles(prev =>
-      prev.map(p => p.id === member.id ? { ...p, role: nextRole } : p)
+      prev.map(p => p.id === member.id ? { ...p, role: nextRole, permissions: nextPerms } : p)
     )
 
-    await updateUserProfileRole(member.id, nextRole)
+    await updateUserProfileRole(member.id, nextRole, nextPerms)
     setUpdatingRole(null)
 
     if (nextRole === 'admin') {
@@ -204,7 +222,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6 min-w-0 max-w-full overflow-hidden">
-      {/* Header Bar */}
+      {/* Header Bar with Clean Rounded Action Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-base-100">Team Dashboard</h1>
@@ -213,7 +231,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => load()}
-            className="p-2.5 bg-base-850 hover:bg-base-800 text-base-300 hover:text-base-100 border border-base-700 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0"
+            className="p-2.5 bg-base-850 hover:bg-base-800 text-base-300 hover:text-base-100 border border-base-700 rounded-2xl text-xs font-bold transition-all shadow-xs shrink-0"
             title="Refresh Live Data"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +241,7 @@ export default function Dashboard() {
           <button
             onClick={handleExportCSV}
             disabled={filtered.length === 0}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-base-850 hover:bg-base-800 text-accent border border-accent/30 hover:border-accent/60 px-4 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40 shadow-xs hover:shadow-sm active:scale-95 shrink-0"
+            className="inline-flex items-center justify-center gap-2 bg-base-850 hover:bg-base-800 text-accent border border-accent/30 hover:border-accent/60 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all disabled:opacity-40 shadow-xs active:scale-95 shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -251,20 +269,25 @@ export default function Dashboard() {
                 key={p.id}
                 type="button"
                 onClick={() => setPreset(p.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-base-850 hover:bg-accent/15 hover:text-accent border border-base-700 hover:border-accent/30 text-base-300 transition-all shadow-xs active:scale-95"
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all shadow-xs active:scale-95 ${
+                  activePreset === p.id && !dateFrom && !dateTo
+                    ? 'bg-accent/20 text-accent border-accent/40'
+                    : 'bg-base-850 hover:bg-accent/15 hover:text-accent border-base-700 text-base-300'
+                }`}
               >
                 {p.label}
               </button>
             ))}
           </div>
 
-          {(dateFrom || dateTo || projectFilter !== 'all') && (
+          {isFilterActive && (
             <button
               type="button"
               onClick={() => {
                 setDateFrom('')
                 setDateTo('')
                 setProjectFilter('all')
+                setActivePreset('all')
               }}
               className="text-xs font-bold text-accent hover:text-accent-soft py-1 px-3 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/25 transition-all active:scale-95 shrink-0"
             >
@@ -273,12 +296,12 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* 3 Perfectly Contained Responsive Columns */}
+        {/* 3 Contained Responsive Columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 w-full max-w-full">
           <div className="w-full min-w-0">
             <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
               <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
               </svg>
               <span>From Date</span>
             </label>
@@ -286,7 +309,10 @@ export default function Dashboard() {
               type="date"
               value={dateFrom}
               onClick={(e) => e.target.showPicker?.()}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value)
+                setActivePreset('custom')
+              }}
               className="w-full min-w-0 max-w-full box-border bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors cursor-pointer shadow-xs"
             />
           </div>
@@ -294,7 +320,7 @@ export default function Dashboard() {
           <div className="w-full min-w-0">
             <label className="flex items-center gap-1.5 text-[11px] font-mono font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400 mb-1.5">
               <svg className="w-3.5 h-3.5 text-accent shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
               </svg>
               <span>To Date</span>
             </label>
@@ -302,7 +328,10 @@ export default function Dashboard() {
               type="date"
               value={dateTo}
               onClick={(e) => e.target.showPicker?.()}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                setDateTo(e.target.value)
+                setActivePreset('custom')
+              }}
               className="w-full min-w-0 max-w-full box-border bg-base-850 border border-base-700 hover:border-base-600 focus:border-accent rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-base-100 outline-none transition-colors cursor-pointer shadow-xs"
             />
           </div>
@@ -337,12 +366,12 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-6 min-w-0 max-w-full">
-          {/* Colorful Radiant Gradient Stat Cards */}
+          {/* Dynamic Radiant Gradient Stat Cards (Adapts to Active Filter) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0 max-w-full">
             <StatCard
-              label="Total hours"
-              value={fmtH(totalMinutesAllTime)}
-              sub="All-time tracked"
+              label={isFilterActive ? 'Filtered Hours' : 'Total Hours'}
+              value={fmtH(isFilterActive ? totalFilteredMinutes : totalMinutesAllTime)}
+              sub={isFilterActive ? `${filtered.length} entries in period` : 'All-time tracked'}
               variant="indigo"
               icon={
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -351,20 +380,20 @@ export default function Dashboard() {
               }
             />
             <StatCard
-              label="This week"
+              label="This Week"
               value={fmtH(totalMinutesWeek)}
-              sub="Current week"
+              sub="Current sprint pace"
               variant="emerald"
               icon={
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
                 </svg>
               }
             />
             <StatCard
-              label="This month"
+              label="This Month"
               value={fmtH(totalMinutesMonth)}
-              sub="Current month"
+              sub="Monthly aggregate"
               variant="sky"
               icon={
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,9 +402,9 @@ export default function Dashboard() {
               }
             />
             <StatCard
-              label="Registered Team"
-              value={`${activeMembersCount} / ${activeProjectsCount}`}
-              sub="Members / Projects"
+              label="Active Contributors"
+              value={`${activeMembersInFilter} / ${activeProjectsInFilter || projects.length}`}
+              sub="Members / Projects active"
               variant="amber"
               icon={
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -435,7 +464,7 @@ export default function Dashboard() {
 
           {/* Registered Team Members & Detailed Hours Matrix */}
           <div className="card p-4 sm:p-6 overflow-hidden min-w-0 max-w-full box-border">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-base-800/80 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-3 border-b border-base-800/80 min-w-0">
               <div>
                 <h3 className="font-display text-base sm:text-lg font-bold text-base-100 flex items-center gap-2">
                   <span>👥</span> Registered Team Members & Activity ({memberStats.length})
@@ -444,6 +473,12 @@ export default function Dashboard() {
                   Click on any member to view KPIs, or use the Admin button beside their name to grant full admin permissions.
                 </p>
               </div>
+            </div>
+
+            {/* Mobile Horizontal Scroll Indicator Hint */}
+            <div className="sm:hidden flex items-center justify-center gap-1.5 py-1.5 px-3 mb-3 rounded-xl bg-base-850/80 border border-base-700/60 text-[11px] font-mono text-accent font-semibold">
+              <span>↔</span>
+              <span>Swipe table horizontally to view all member data</span>
             </div>
 
             <div className="overflow-x-auto w-full min-w-0 max-w-full">
@@ -496,9 +531,9 @@ export default function Dashboard() {
                               type="button"
                               onClick={(e) => handleToggleUserRole(e, member)}
                               disabled={updatingRole === member.id}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all active:scale-95 shadow-xs ${
+                              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold border transition-all active:scale-95 shadow-xs min-w-[120px] ${
                                 member.role === 'admin'
-                                  ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
+                                  ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
                                   : 'bg-base-800 hover:bg-accent/20 text-slate-300 hover:text-accent border-base-700 hover:border-accent/40'
                               }`}
                               title={member.role === 'admin' ? 'Click to demote to Member' : 'Click to grant full Admin privileges'}

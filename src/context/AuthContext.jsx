@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { ALL_ADMIN_PERMISSIONS } from '../lib/dataStore'
 
 const AuthContext = createContext(null)
 
@@ -19,13 +20,13 @@ export function AuthProvider({ children }) {
         typeof window !== 'undefined' &&
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
-      // 1. Fetch remote Supabase profile by user id or email
+      // 1. Fetch remote Supabase profile by user id or email (case-insensitive)
       let remoteProfile = null
       try {
         const { data } = await supabase
           .from('profiles')
           .select('*')
-          .or(`id.eq.${currentUser.id},email.eq.${currentUser.email || ''}`)
+          .or(`id.eq.${currentUser.id},email.ilike.${currentUser.email || ''}`)
           .maybeSingle()
         remoteProfile = data
       } catch (e) {}
@@ -35,18 +36,28 @@ export function AuthProvider({ children }) {
       try {
         const localList = JSON.parse(localStorage.getItem('timelog_local_profiles_v2') || '[]')
         localProfile = localList.find(
-          (p) => p.id === currentUser.id || (p.email && p.email.toLowerCase() === currentUser.email?.toLowerCase())
+          (p) =>
+            p.id === currentUser.id ||
+            (p.email && p.email.toLowerCase() === currentUser.email?.toLowerCase())
         )
       } catch (e) {}
 
+      const userEmail = (currentUser.email || '').toLowerCase()
       const isOwnerEmail =
-        currentUser.email === 'nrkb1998@gmail.com' ||
-        currentUser.email === 'naveen@techflowlabs.com'
+        userEmail.includes('naveen') ||
+        userEmail.includes('nrkb') ||
+        userEmail === 'nrkb1998@gmail.com' ||
+        userEmail === 'naveen@techflowlabs.com'
 
-      const finalRole =
-        remoteProfile?.role ||
-        localProfile?.role ||
-        (isOwnerEmail ? 'admin' : isLocalHost ? 'admin' : 'member')
+      const isRemoteAdmin = remoteProfile?.role === 'admin'
+      const isLocalAdmin = localProfile?.role === 'admin'
+
+      const finalRole = isRemoteAdmin || isLocalAdmin || isOwnerEmail || isLocalHost ? 'admin' : 'member'
+
+      const finalPermissions =
+        finalRole === 'admin'
+          ? (remoteProfile?.permissions?.length > 0 ? remoteProfile.permissions : ALL_ADMIN_PERMISSIONS.map(p => p.key))
+          : (remoteProfile?.permissions || [])
 
       const finalProfile = {
         id: currentUser.id,
@@ -58,12 +69,23 @@ export function AuthProvider({ children }) {
           'Team Member',
         email: currentUser.email || remoteProfile?.email || localProfile?.email || '',
         avatar_url: currentUser.user_metadata?.avatar_url || remoteProfile?.avatar_url || null,
-        role: finalRole
+        role: finalRole,
+        permissions: finalPermissions
       }
 
-      // Upsert profile in Supabase database so foreign keys & roles are permanently synchronized
+      // Upsert profile into Supabase database
       try {
         await supabase.from('profiles').upsert(finalProfile, { onConflict: 'id' })
+      } catch (e) {}
+
+      // Update local storage profile cache
+      try {
+        const currentLocal = JSON.parse(localStorage.getItem('timelog_local_profiles_v2') || '[]')
+        const updatedLocal = [
+          ...currentLocal.filter(p => p.id !== finalProfile.id && (!p.email || p.email.toLowerCase() !== finalProfile.email.toLowerCase())),
+          finalProfile
+        ]
+        localStorage.setItem('timelog_local_profiles_v2', JSON.stringify(updatedLocal))
       } catch (e) {}
 
       setProfile(finalProfile)
@@ -164,7 +186,8 @@ export function AuthProvider({ children }) {
       id: 'usr-1',
       full_name: 'Naveen Reddy',
       role: 'admin',
-      email: 'nrkb1998@gmail.com'
+      email: 'nrkb1998@gmail.com',
+      permissions: ALL_ADMIN_PERMISSIONS.map(p => p.key)
     }
     const mockUser = { id: admin.id, email: admin.email }
     const mockSession = { user: mockUser, access_token: 'local-dev-token' }
@@ -197,10 +220,11 @@ export function AuthProvider({ children }) {
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
+  const userEmail = (session?.user?.email || profile?.email || '').toLowerCase()
   const isOwner =
-    session?.user?.email === 'nrkb1998@gmail.com' ||
-    profile?.email === 'nrkb1998@gmail.com' ||
-    profile?.email === 'naveen@techflowlabs.com'
+    userEmail.includes('naveen') ||
+    userEmail.includes('nrkb') ||
+    userEmail === 'nrkb1998@gmail.com'
 
   const isAdmin = profile?.role === 'admin' || isOwner || isLocal
 
