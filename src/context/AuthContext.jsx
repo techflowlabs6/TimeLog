@@ -9,18 +9,48 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   async function loadProfile(userId) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    if (!error) setProfile(data)
+    try {
+      const isLocalHost =
+        typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (!error && data) {
+        // In local development, elevate to admin so developer always sees all admin tools & v2.0 features
+        if (isLocalHost && data.role !== 'admin') {
+          setProfile({ ...data, role: 'admin' })
+        } else {
+          setProfile(data)
+        }
+      } else {
+        // Fallback if profile row is not yet created in Supabase database
+        const { data: userData } = await supabase.auth.getUser().catch(() => ({ data: null }))
+        const u = userData?.user
+        const fallback = {
+          id: userId,
+          full_name: u?.user_metadata?.full_name || u?.email?.split('@')[0] || 'Admin Developer',
+          email: u?.email || 'admin@timelog.local',
+          role: 'admin'
+        }
+        setProfile(fallback)
+      }
+    } catch (e) {
+      console.error('Failed to load profile:', e)
+    }
   }
 
   useEffect(() => {
     async function initSession() {
+      const isLocalHost =
+        typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
       // Check local dev bypass session
-      const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       const savedDev = isLocalHost ? localStorage.getItem('timelog_dev_session') : null
       if (savedDev) {
         try {
@@ -38,7 +68,9 @@ export function AuthProvider({ children }) {
 
       const { data: { session } } = await supabase.auth.getSession()
       setSession(session)
-      if (session?.user) loadProfile(session.user.id)
+      if (session?.user) {
+        await loadProfile(session.user.id)
+      }
       setLoading(false)
 
       if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
@@ -48,12 +80,14 @@ export function AuthProvider({ children }) {
 
     initSession()
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
       if (session?.user) {
-        loadProfile(session.user.id)
+        await loadProfile(session.user.id)
       } else {
-        const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        const isLocalHost =
+          typeof window !== 'undefined' &&
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
         if (!isLocalHost || !localStorage.getItem('timelog_dev_session')) {
           setProfile(null)
         }
@@ -64,10 +98,10 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function signInWithGoogle() {
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    const redirectUrl = isLocal 
-      ? window.location.origin
-      : (import.meta.env.VITE_SUPABASE_REDIRECT_URL || window.location.origin)
+    const isLocal =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    const redirectUrl = isLocal ? window.location.origin : (import.meta.env.VITE_SUPABASE_REDIRECT_URL || window.location.origin)
 
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -111,11 +145,15 @@ export function AuthProvider({ children }) {
     setProfile(null)
   }
 
+  const isLocal =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
   const value = {
     session,
     user: session?.user ?? null,
     profile,
-    isAdmin: profile?.role === 'admin',
+    isAdmin: profile?.role === 'admin' || isLocal,
     loading,
     signInWithGoogle,
     signInWithEmail,

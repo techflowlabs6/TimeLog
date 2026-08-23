@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { fetchProjects, saveTimeEntry } from '../lib/dataStore'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
@@ -28,9 +28,10 @@ export default function LogTime() {
   const [message, setMessage] = useState('')
 
   useEffect(() => {
-    supabase.from('projects').select('*').eq('is_active', true).order('created_at').then(({ data }) => {
-      setProjects(data || [])
-      if (data?.length) setProjectId(data[0].id)
+    fetchProjects().then((data) => {
+      const active = (data || []).filter(p => p.is_active !== false)
+      setProjects(active)
+      if (active.length) setProjectId(active[0].id)
     })
   }, [])
 
@@ -64,8 +65,8 @@ export default function LogTime() {
     e.preventDefault()
     setMessage('')
     setSaving(true)
-    const { error } = await supabase.from('time_entries').insert({
-      user_id: user.id,
+    const { error } = await saveTimeEntry({
+      user_id: user?.id || 'usr-1',
       project_id: projectId,
       entry_date: entryDate,
       start_time: mode === 'range' ? startTime : null,

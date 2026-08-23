@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { fetchAllData } from '../lib/dataStore'
 import { useToast } from '../context/ToastContext'
 import StatCard from '../components/StatCard'
 import HoursPieChart from '../components/HoursPieChart'
@@ -34,14 +34,10 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [entriesRes, projectsRes, profilesRes] = await Promise.all([
-        supabase.from('time_entries').select('*'),
-        supabase.from('projects').select('*').order('created_at'),
-        supabase.from('profiles').select('*')
-      ])
-      setEntries(entriesRes.data || [])
-      setProjects(projectsRes.data || [])
-      setProfiles(profilesRes.data || [])
+      const data = await fetchAllData()
+      setEntries(data.entries || [])
+      setProjects(data.projects || [])
+      setProfiles(data.profiles || [])
       setLoading(false)
     }
     load()
