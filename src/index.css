@@ -83,7 +83,34 @@ body {
 ::-webkit-scrollbar-thumb { background: rgb(var(--base-700)); border-radius: 9999px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* Custom High-Definition Date & Time Picker Icons on Right Side */
+/* ─── Global Input Styling: Guaranteed 4-Sided Smooth Rounded Corners ─── */
+input[type="date"],
+input[type="time"],
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0.75rem !important; /* 12px rounded-xl */
+  box-sizing: border-box !important;
+  background-clip: padding-box !important;
+}
+
+/* Fix iOS and Safari native date/time internal spacing and alignment */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  padding: 0;
+  line-height: inherit;
+  min-height: 1.25em;
+}
+
+/* Custom High-Definition Date & Time Picker Icons */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;

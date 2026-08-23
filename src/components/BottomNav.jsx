@@ -12,7 +12,7 @@ export default function BottomNav({ onOpenProfile }) {
     ...(isAdmin ? [{ to: '/admin/projects', label: 'Projects', icon: '⚙' }] : [])
   ]
 
-  const initial = (profile?.full_name || user?.email || 'NR').slice(0, 2).toUpperCase()
+  const initial = (profile?.full_name || user?.email || 'N').slice(0, 1).toUpperCase()
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-base-950/95 backdrop-blur-lg border-t border-base-800/90 px-3 py-2 flex items-center justify-around shadow-2xl safe-area-bottom">

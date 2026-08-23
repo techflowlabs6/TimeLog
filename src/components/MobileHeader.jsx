@@ -37,7 +37,7 @@ export default function MobileHeader({ onOpenProfile }) {
   const currentLink = links.find((l) => l.to === location.pathname) ||
     (location.pathname === '/admin/projects' ? { label: 'Projects (Admin)' } : { label: 'TimeLog' })
 
-  const initial = (profile?.full_name || profile?.email || 'NR').slice(0, 2).toUpperCase()
+  const initial = (profile?.full_name || profile?.email || 'N').slice(0, 1).toUpperCase()
 
   return (
     <>

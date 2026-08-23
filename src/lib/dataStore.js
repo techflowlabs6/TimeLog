@@ -6,7 +6,7 @@ const LOCAL_ENTRIES_KEY = 'timelog_local_entries_v2'
 const LOCAL_ROADMAP_KEY = 'timelog_local_roadmap_v2'
 
 export const DEFAULT_PROFILES = [
-  { id: 'usr-1', full_name: 'Naveen Reddy', email: 'naveen@techflowlabs.com', role: 'admin' },
+  { id: 'usr-1', full_name: 'Naveen Reddy', email: 'nrkb1998@gmail.com', role: 'admin' },
   { id: 'usr-2', full_name: 'Sushma K.', email: 'sushma@fashion.com', role: 'admin' },
   { id: 'usr-3', full_name: 'Alex Chen', email: 'alex@design.io', role: 'member' },
   { id: 'usr-4', full_name: 'Priya Patel', email: 'priya@techflowlabs.com', role: 'member' }
@@ -228,28 +228,50 @@ export async function fetchAllData() {
 export async function updateUserProfileRole(userId, newRole) {
   initLocalStorageIfEmpty()
 
-  // 1. Direct write to Supabase profiles table
+  const localProfiles = getLocal(LOCAL_PROFILES_KEY, DEFAULT_PROFILES)
+  const existingLocal = localProfiles.find(p => p.id === userId)
+
+  // 1. Direct upsert to Supabase profiles table
   try {
+    let remoteProfile = null
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`id.eq.${userId},email.eq.${existingLocal?.email || ''}`)
+        .maybeSingle()
+      remoteProfile = data
+    } catch (e) {}
+
+    const targetId = remoteProfile?.id || userId
+    const payload = {
+      id: targetId,
+      full_name: remoteProfile?.full_name || existingLocal?.full_name || 'Team Member',
+      email: remoteProfile?.email || existingLocal?.email || '',
+      role: newRole
+    }
+
     const { data, error } = await supabase
       .from('profiles')
-      .update({ role: newRole })
-      .eq('id', userId)
+      .upsert(payload, { onConflict: 'id' })
       .select()
       .single()
 
     if (!error && data) {
-      const current = getLocal(LOCAL_PROFILES_KEY, DEFAULT_PROFILES)
-      const updated = current.map(p => p.id === userId ? { ...p, role: newRole } : p)
+      const updated = localProfiles.map(p =>
+        p.id === userId || p.id === targetId || (p.email && p.email === data.email)
+          ? { ...p, ...data, role: newRole }
+          : p
+      )
       setLocal(LOCAL_PROFILES_KEY, updated)
       return { data, error: null }
     }
   } catch (e) {
-    console.warn('Remote Supabase role update exception:', e)
+    console.warn('Remote Supabase role upsert exception:', e)
   }
 
   // 2. Local store update fallback
-  const current = getLocal(LOCAL_PROFILES_KEY, DEFAULT_PROFILES)
-  const updated = current.map(p => p.id === userId ? { ...p, role: newRole } : p)
+  const updated = localProfiles.map(p => (p.id === userId ? { ...p, role: newRole } : p))
   setLocal(LOCAL_PROFILES_KEY, updated)
 
   return { data: { id: userId, role: newRole }, error: null }
@@ -300,7 +322,7 @@ export async function saveTimeEntry(entry) {
             full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Team Member',
             email: user.email,
             avatar_url: user.user_metadata?.avatar_url || null,
-            role: 'member'
+            role: user.email === 'nrkb1998@gmail.com' ? 'admin' : 'member'
           },
           { onConflict: 'id' }
         )
@@ -447,7 +469,7 @@ export async function addRoadmapItem(item) {
   const newItem = {
     ...item,
     id: `rd-${Date.now()}`,
-    is_completed: false,
+    is_completed: item.status === 'shipped',
     order_index: Date.now(),
     created_at: new Date().toISOString()
   }

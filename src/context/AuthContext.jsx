@@ -8,35 +8,65 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  async function loadProfile(userId) {
+  async function loadProfile(currentUser) {
+    if (!currentUser) {
+      setProfile(null)
+      return
+    }
+
     try {
       const isLocalHost =
         typeof window !== 'undefined' &&
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+      // 1. Fetch remote Supabase profile by user id or email
+      let remoteProfile = null
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`id.eq.${currentUser.id},email.eq.${currentUser.email || ''}`)
+          .maybeSingle()
+        remoteProfile = data
+      } catch (e) {}
 
-      if (!error && data) {
-        if (isLocalHost && data.role !== 'admin') {
-          setProfile({ ...data, role: 'admin' })
-        } else {
-          setProfile(data)
-        }
-      } else {
-        const { data: userData } = await supabase.auth.getUser().catch(() => ({ data: null }))
-        const u = userData?.user
-        const fallback = {
-          id: userId,
-          full_name: u?.user_metadata?.full_name || u?.email?.split('@')[0] || 'Team Member',
-          email: u?.email || 'member@timelog.local',
-          role: isLocalHost ? 'admin' : 'member'
-        }
-        setProfile(fallback)
+      // 2. Fetch local storage profile cache
+      let localProfile = null
+      try {
+        const localList = JSON.parse(localStorage.getItem('timelog_local_profiles_v2') || '[]')
+        localProfile = localList.find(
+          (p) => p.id === currentUser.id || (p.email && p.email.toLowerCase() === currentUser.email?.toLowerCase())
+        )
+      } catch (e) {}
+
+      const isOwnerEmail =
+        currentUser.email === 'nrkb1998@gmail.com' ||
+        currentUser.email === 'naveen@techflowlabs.com'
+
+      const finalRole =
+        remoteProfile?.role ||
+        localProfile?.role ||
+        (isOwnerEmail ? 'admin' : isLocalHost ? 'admin' : 'member')
+
+      const finalProfile = {
+        id: currentUser.id,
+        full_name:
+          remoteProfile?.full_name ||
+          localProfile?.full_name ||
+          currentUser.user_metadata?.full_name ||
+          currentUser.email?.split('@')[0] ||
+          'Team Member',
+        email: currentUser.email || remoteProfile?.email || localProfile?.email || '',
+        avatar_url: currentUser.user_metadata?.avatar_url || remoteProfile?.avatar_url || null,
+        role: finalRole
       }
+
+      // Upsert profile in Supabase database so foreign keys & roles are permanently synchronized
+      try {
+        await supabase.from('profiles').upsert(finalProfile, { onConflict: 'id' })
+      } catch (e) {}
+
+      setProfile(finalProfile)
     } catch (e) {
       console.error('Failed to load profile:', e)
     }
@@ -64,13 +94,13 @@ export function AuthProvider({ children }) {
         } catch (e) {}
       }
 
-      // Fetch active session from Supabase Client (handles URL hash automatically)
+      // Fetch active session from Supabase Client
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (mounted) {
           setSession(session)
           if (session?.user) {
-            await loadProfile(session.user.id)
+            await loadProfile(session.user)
           }
           setLoading(false)
         }
@@ -87,13 +117,13 @@ export function AuthProvider({ children }) {
 
     initSession()
 
-    // Realtime auth listener for OAuth redirects, sign-in, token refresh, and sign-out
+    // Realtime auth listener
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return
       setSession(currentSession)
 
       if (currentSession?.user) {
-        await loadProfile(currentSession.user.id)
+        await loadProfile(currentSession.user)
         if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
           window.history.replaceState(null, '', window.location.pathname + window.location.search)
         }
@@ -131,10 +161,10 @@ export function AuthProvider({ children }) {
   async function devLogin() {
     const { data: profiles } = await supabase.from('profiles').select('*').limit(5)
     const admin = profiles?.find(p => p.role === 'admin') || profiles?.[0] || {
-      id: 'local-dev-user',
+      id: 'usr-1',
       full_name: 'Naveen Reddy',
       role: 'admin',
-      email: 'naveen@techflowlabs.com'
+      email: 'nrkb1998@gmail.com'
     }
     const mockUser = { id: admin.id, email: admin.email }
     const mockSession = { user: mockUser, access_token: 'local-dev-token' }
@@ -167,12 +197,20 @@ export function AuthProvider({ children }) {
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
+  const isOwner =
+    session?.user?.email === 'nrkb1998@gmail.com' ||
+    profile?.email === 'nrkb1998@gmail.com' ||
+    profile?.email === 'naveen@techflowlabs.com'
+
+  const isAdmin = profile?.role === 'admin' || isOwner || isLocal
+
   const value = {
     session,
     user: session?.user ?? null,
     profile,
-    isAdmin: profile?.role === 'admin' || isLocal,
+    isAdmin,
     loading,
+    refreshProfile: () => session?.user ? loadProfile(session.user) : null,
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,
