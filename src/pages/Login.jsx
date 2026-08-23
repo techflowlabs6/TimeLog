@@ -10,7 +10,10 @@ export default function Login() {
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  const isLocal =
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
   if (user) return <Navigate to="/" replace />
 
