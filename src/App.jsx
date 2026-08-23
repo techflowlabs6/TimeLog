@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import MobileHeader from './components/MobileHeader'
 import BottomNav from './components/BottomNav'
@@ -23,6 +23,21 @@ import CookiePolicy from './pages/CookiePolicy'
 import { useAuth } from './context/AuthContext'
 
 const SIDEBAR_KEY = 'timelog_sidebar_collapsed_v1'
+
+function AnalyticsTracker() {
+  const location = useLocation()
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+      window.gtag('config', 'G-G0VDGMHWC1', {
+        page_path: location.pathname + location.search,
+        page_title: document.title
+      })
+    }
+  }, [location])
+
+  return null
+}
 
 function Shell({ children }) {
   const { profile } = useAuth()
@@ -96,69 +111,70 @@ function Shell({ children }) {
 }
 
 export default function App() {
-  const { user } = useAuth()
-
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Shell>
-              <Dashboard />
-            </Shell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/log"
-        element={
-          <ProtectedRoute>
-            <Shell>
-              <LogTime />
-            </Shell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/my-log"
-        element={
-          <ProtectedRoute>
-            <Shell>
-              <MyLog />
-            </Shell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/roadmap"
-        element={
-          <ProtectedRoute>
-            <Shell>
-              <Roadmap />
-            </Shell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/projects"
-        element={
-          <ProtectedRoute adminOnly>
-            <Shell>
-              <AdminProjects />
-            </Shell>
-          </ProtectedRoute>
-        }
-      />
-      {/* Support pages */}
-      <Route path="/help" element={<ProtectedRoute><Shell><HelpCenter /></Shell></ProtectedRoute>} />
-      <Route path="/contact" element={<ProtectedRoute><Shell><ContactSupport /></Shell></ProtectedRoute>} />
-      <Route path="/status" element={<ProtectedRoute><Shell><SystemStatus /></Shell></ProtectedRoute>} />
-      {/* Legal pages */}
-      <Route path="/privacy" element={<ProtectedRoute><Shell><PrivacyPolicy /></Shell></ProtectedRoute>} />
-      <Route path="/terms" element={<ProtectedRoute><Shell><TermsOfService /></Shell></ProtectedRoute>} />
-      <Route path="/cookies" element={<ProtectedRoute><Shell><CookiePolicy /></Shell></ProtectedRoute>} />
-    </Routes>
+    <>
+      <AnalyticsTracker />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Shell>
+                <Dashboard />
+              </Shell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/log"
+          element={
+            <ProtectedRoute>
+              <Shell>
+                <LogTime />
+              </Shell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-log"
+          element={
+            <ProtectedRoute>
+              <Shell>
+                <MyLog />
+              </Shell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/roadmap"
+          element={
+            <ProtectedRoute>
+              <Shell>
+                <Roadmap />
+              </Shell>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/projects"
+          element={
+            <ProtectedRoute adminOnly>
+              <Shell>
+                <AdminProjects />
+              </Shell>
+            </ProtectedRoute>
+          }
+        />
+        {/* Support pages */}
+        <Route path="/help" element={<ProtectedRoute><Shell><HelpCenter /></Shell></ProtectedRoute>} />
+        <Route path="/contact" element={<ProtectedRoute><Shell><ContactSupport /></Shell></ProtectedRoute>} />
+        <Route path="/status" element={<ProtectedRoute><Shell><SystemStatus /></Shell></ProtectedRoute>} />
+        {/* Legal pages */}
+        <Route path="/privacy" element={<ProtectedRoute><Shell><PrivacyPolicy /></Shell></ProtectedRoute>} />
+        <Route path="/terms" element={<ProtectedRoute><Shell><TermsOfService /></Shell></ProtectedRoute>} />
+        <Route path="/cookies" element={<ProtectedRoute><Shell><CookiePolicy /></Shell></ProtectedRoute>} />
+      </Routes>
+    </>
   )
 }
