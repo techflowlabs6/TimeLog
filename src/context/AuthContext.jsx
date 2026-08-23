@@ -21,21 +21,19 @@ export function AuthProvider({ children }) {
         .single()
 
       if (!error && data) {
-        // In local development, elevate to admin so developer always sees all admin tools & v2.0 features
         if (isLocalHost && data.role !== 'admin') {
           setProfile({ ...data, role: 'admin' })
         } else {
           setProfile(data)
         }
       } else {
-        // Fallback if profile row is not yet created in Supabase database
         const { data: userData } = await supabase.auth.getUser().catch(() => ({ data: null }))
         const u = userData?.user
         const fallback = {
           id: userId,
-          full_name: u?.user_metadata?.full_name || u?.email?.split('@')[0] || 'Admin Developer',
-          email: u?.email || 'admin@timelog.local',
-          role: 'admin'
+          full_name: u?.user_metadata?.full_name || u?.email?.split('@')[0] || 'Team Member',
+          email: u?.email || 'member@timelog.local',
+          role: isLocalHost ? 'admin' : 'member'
         }
         setProfile(fallback)
       }
@@ -45,6 +43,8 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    let mounted = true
+
     async function initSession() {
       const isLocalHost =
         typeof window !== 'undefined' &&
@@ -55,35 +55,48 @@ export function AuthProvider({ children }) {
       if (savedDev) {
         try {
           const parsed = JSON.parse(savedDev)
-          setSession(parsed.session)
-          setProfile(parsed.profile)
-          setLoading(false)
+          if (mounted) {
+            setSession(parsed.session)
+            setProfile(parsed.profile)
+            setLoading(false)
+          }
           return
         } catch (e) {}
       }
 
-      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
-        await supabase.auth.getSessionFromUrl().catch(() => {})
-      }
+      // Fetch active session from Supabase Client (handles URL hash automatically)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (mounted) {
+          setSession(session)
+          if (session?.user) {
+            await loadProfile(session.user.id)
+          }
+          setLoading(false)
+        }
 
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
-      if (session?.user) {
-        await loadProfile(session.user.id)
-      }
-      setLoading(false)
-
-      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        // Clean up OAuth access token hash from address bar gracefully
+        if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        }
+      } catch (err) {
+        console.error('Error initializing session:', err)
+        if (mounted) setLoading(false)
       }
     }
 
     initSession()
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session)
-      if (session?.user) {
-        await loadProfile(session.user.id)
+    // Realtime auth listener for OAuth redirects, sign-in, token refresh, and sign-out
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (!mounted) return
+      setSession(currentSession)
+
+      if (currentSession?.user) {
+        await loadProfile(currentSession.user.id)
+        if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        }
       } else {
         const isLocalHost =
           typeof window !== 'undefined' &&
@@ -92,9 +105,13 @@ export function AuthProvider({ children }) {
           setProfile(null)
         }
       }
+      setLoading(false)
     })
 
-    return () => listener.subscription.unsubscribe()
+    return () => {
+      mounted = false
+      listener?.subscription?.unsubscribe?.()
+    }
   }, [])
 
   async function signInWithGoogle() {
@@ -124,6 +141,7 @@ export function AuthProvider({ children }) {
     setSession(mockSession)
     setProfile(admin)
     localStorage.setItem('timelog_dev_session', JSON.stringify({ session: mockSession, profile: admin }))
+    setLoading(false)
   }
 
   async function signInWithEmail(email, password) {
