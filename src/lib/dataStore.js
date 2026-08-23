@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 const LOCAL_PROJECTS_KEY = 'timelog_local_projects_v2'
 const LOCAL_PROFILES_KEY = 'timelog_local_profiles_v2'
 const LOCAL_ENTRIES_KEY = 'timelog_local_entries_v2'
+const LOCAL_ROADMAP_KEY = 'timelog_local_roadmap_v2'
 
 export const DEFAULT_PROFILES = [
   { id: 'usr-1', full_name: 'Naveen Reddy', email: 'naveen@techflowlabs.com', role: 'admin' },
@@ -17,6 +18,69 @@ export const DEFAULT_PROJECTS = [
   { id: 'proj-3', name: 'Client Portal v2', color_hex: '#22c55e', is_active: true },
   { id: 'proj-4', name: 'API Infrastructure', color_hex: '#f59e0b', is_active: true },
   { id: 'proj-5', name: 'Brand & Marketing', color_hex: '#ec4899', is_active: true }
+]
+
+export const DEFAULT_ROADMAP = [
+  {
+    id: 'rd-1',
+    project_name: 'Design System & UI',
+    milestone: 'v2.0 — Shipped',
+    title: 'Dual-Engine Dark/Light Obsidian Theme System',
+    description: 'Complete high contrast neon & crisp executive light styles',
+    status: 'shipped',
+    is_completed: true,
+    order_index: 1
+  },
+  {
+    id: 'rd-2',
+    project_name: 'Design System & UI',
+    milestone: 'v2.0 — Shipped',
+    title: 'Top Navigation Header & Command Search (⌘K)',
+    description: 'Quick route switcher, status telemetry, and notification drawer',
+    status: 'shipped',
+    is_completed: true,
+    order_index: 2
+  },
+  {
+    id: 'rd-3',
+    project_name: 'French Grammar App',
+    milestone: 'v2.1 — Active Sprint',
+    title: 'Registered Team Analytics & Hours Breakdown',
+    description: 'Live person-to-project contribution matrices and member stats on Dashboard',
+    status: 'in_progress',
+    is_completed: true,
+    order_index: 3
+  },
+  {
+    id: 'rd-4',
+    project_name: 'Client Portal v2',
+    milestone: 'v2.1 — Active Sprint',
+    title: 'Multi-Account Database Sync & Auto Profile Creation',
+    description: 'Ensure all team member logins save real-time hours to Supabase across accounts',
+    status: 'in_progress',
+    is_completed: true,
+    order_index: 4
+  },
+  {
+    id: 'rd-5',
+    project_name: 'API Infrastructure',
+    milestone: 'v2.2 — Planned Next',
+    title: 'Per-Project Hour Budgets & Over-Capacity Alerts',
+    description: 'Set target hours per project with warning thresholds',
+    status: 'planned',
+    is_completed: false,
+    order_index: 5
+  },
+  {
+    id: 'rd-6',
+    project_name: 'Brand & Marketing',
+    milestone: 'v2.2 — Planned Next',
+    title: 'Automated Weekly Slack & Email Summary Reports',
+    description: 'Scheduled digest of team productivity and project breakdown',
+    status: 'planned',
+    is_completed: false,
+    order_index: 6
+  }
 ]
 
 function getRecentDates() {
@@ -43,16 +107,6 @@ export function generateSeedEntries() {
   ]
 }
 
-function isDevBypass() {
-  if (typeof window === 'undefined') return false
-  return (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    !!localStorage.getItem('timelog_dev_session')
-  )
-}
-
-// Local storage helpers
 function getLocal(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
@@ -77,36 +131,47 @@ export function initLocalStorageIfEmpty() {
   if (!localStorage.getItem(LOCAL_ENTRIES_KEY)) {
     setLocal(LOCAL_ENTRIES_KEY, generateSeedEntries())
   }
+  if (!localStorage.getItem(LOCAL_ROADMAP_KEY)) {
+    setLocal(LOCAL_ROADMAP_KEY, DEFAULT_ROADMAP)
+  }
 }
 
-// Data operations with automatic Supabase + Local Dev fallback
+// ── Multi-Account Data Fetcher ────────────────────────────────
 export async function fetchAllData() {
   initLocalStorageIfEmpty()
-  const isDev = isDevBypass()
 
   try {
     const [entriesRes, projectsRes, profilesRes] = await Promise.all([
-      supabase.from('time_entries').select('*'),
+      supabase.from('time_entries').select('*').order('entry_date', { ascending: false }),
       supabase.from('projects').select('*').order('created_at'),
       supabase.from('profiles').select('*')
     ])
 
-    const hasRemoteData =
-      (entriesRes.data && entriesRes.data.length > 0) ||
-      (projectsRes.data && projectsRes.data.length > 0)
+    const remoteEntries = entriesRes.data || []
+    const remoteProjects = projectsRes.data || []
+    const remoteProfiles = profilesRes.data || []
 
-    if (hasRemoteData && !isDev) {
+    if (remoteEntries.length > 0 || remoteProjects.length > 0 || remoteProfiles.length > 0) {
+      // Merge remote profiles with known profiles map so all registered users are properly named
+      const profileMap = new Map()
+      DEFAULT_PROFILES.forEach(p => profileMap.set(p.id, p))
+      remoteProfiles.forEach(p => profileMap.set(p.id, p))
+
+      // Also ensure projects are available
+      const projectMap = new Map()
+      DEFAULT_PROJECTS.forEach(p => projectMap.set(p.id, p))
+      remoteProjects.forEach(p => projectMap.set(p.id, p))
+
       return {
-        entries: entriesRes.data || [],
-        projects: projectsRes.data || [],
-        profiles: profilesRes.data || []
+        entries: remoteEntries.length > 0 ? remoteEntries : getLocal(LOCAL_ENTRIES_KEY, generateSeedEntries()),
+        projects: Array.from(projectMap.values()),
+        profiles: Array.from(profileMap.values())
       }
     }
   } catch (e) {
-    console.warn('Supabase fetch returned error, falling back to local dataset:', e)
+    console.warn('Remote Supabase fetch exception, using local store:', e)
   }
 
-  // Fallback to local store
   return {
     entries: getLocal(LOCAL_ENTRIES_KEY, generateSeedEntries()),
     projects: getLocal(LOCAL_PROJECTS_KEY, DEFAULT_PROJECTS),
@@ -126,32 +191,53 @@ export async function fetchProjects() {
 export async function fetchUserEntries(userId) {
   initLocalStorageIfEmpty()
   try {
-    const { data } = await supabase
-      .from('time_entries')
-      .select('*')
-      .eq('user_id', userId)
-      .order('entry_date', { ascending: false })
-    if (data && data.length > 0) return data
+    if (userId) {
+      const { data } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .order('entry_date', { ascending: false })
+      if (data && data.length > 0) return data
+    }
   } catch (e) {}
 
   const all = getLocal(LOCAL_ENTRIES_KEY, generateSeedEntries())
   return all.filter(e => e.user_id === userId || !userId)
 }
 
+// ── Multi-Account Save Entry (Guarantees Profile Existence) ────
 export async function saveTimeEntry(entry) {
   initLocalStorageIfEmpty()
-  // Try remote insert
+
+  // Ensure profile exists in Supabase if user logged in
+  if (entry.user_id && entry.user_id.length > 10) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('profiles').upsert(
+          {
+            id: user.id,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Team Member',
+            email: user.email,
+            avatar_url: user.user_metadata?.avatar_url || null
+          },
+          { onConflict: 'id' }
+        )
+      }
+    } catch (e) {}
+  }
+
+  // Insert to remote database
   try {
     const { data, error } = await supabase.from('time_entries').insert(entry).select().single()
     if (!error && data) {
-      // Also sync to local
       const current = getLocal(LOCAL_ENTRIES_KEY, [])
       setLocal(LOCAL_ENTRIES_KEY, [data, ...current])
       return { data, error: null }
     }
   } catch (e) {}
 
-  // Local fallback
+  // Fallback to local store
   const newEntry = {
     ...entry,
     id: entry.id || `ent-${Date.now()}`,
@@ -185,6 +271,7 @@ export async function deleteTimeEntryItem(id) {
   return { success: true }
 }
 
+// ── Project CRUD ──────────────────────────────────────────────
 export async function addProjectItem(project) {
   initLocalStorageIfEmpty()
   try {
@@ -237,7 +324,73 @@ export async function deleteProjectItem(id) {
   const updated = current.filter(p => p.id !== id)
   setLocal(LOCAL_PROJECTS_KEY, updated)
 
-  // Cascade delete entries
   const currentEntries = getLocal(LOCAL_ENTRIES_KEY, generateSeedEntries())
   setLocal(LOCAL_ENTRIES_KEY, currentEntries.filter(e => e.project_id !== id))
+}
+
+// ── Roadmap Items CRUD ────────────────────────────────────────
+export async function fetchRoadmapItems() {
+  initLocalStorageIfEmpty()
+  try {
+    const { data } = await supabase.from('roadmap_items').select('*').order('order_index')
+    if (data && data.length > 0) return data
+  } catch (e) {}
+  return getLocal(LOCAL_ROADMAP_KEY, DEFAULT_ROADMAP)
+}
+
+export async function addRoadmapItem(item) {
+  initLocalStorageIfEmpty()
+  try {
+    const { data, error } = await supabase.from('roadmap_items').insert(item).select().single()
+    if (!error && data) {
+      const current = getLocal(LOCAL_ROADMAP_KEY, DEFAULT_ROADMAP)
+      setLocal(LOCAL_ROADMAP_KEY, [...current, data])
+      return { data, error: null }
+    }
+  } catch (e) {}
+
+  const newItem = {
+    ...item,
+    id: `rd-${Date.now()}`,
+    is_completed: false,
+    order_index: Date.now(),
+    created_at: new Date().toISOString()
+  }
+  const current = getLocal(LOCAL_ROADMAP_KEY, DEFAULT_ROADMAP)
+  const updated = [...current, newItem]
+  setLocal(LOCAL_ROADMAP_KEY, updated)
+  return { data: newItem, error: null }
+}
+
+export async function updateRoadmapItem(id, updates) {
+  try {
+    await supabase.from('roadmap_items').update(updates).eq('id', id)
+  } catch (e) {}
+
+  const current = getLocal(LOCAL_ROADMAP_KEY, DEFAULT_ROADMAP)
+  const updated = current.map(item => (item.id === id ? { ...item, ...updates } : item))
+  setLocal(LOCAL_ROADMAP_KEY, updated)
+  return { success: true }
+}
+
+export async function toggleRoadmapItemCompleted(id, isCompleted) {
+  try {
+    await supabase.from('roadmap_items').update({ is_completed: isCompleted }).eq('id', id)
+  } catch (e) {}
+
+  const current = getLocal(LOCAL_ROADMAP_KEY, DEFAULT_ROADMAP)
+  const updated = current.map(item => (item.id === id ? { ...item, is_completed: isCompleted } : item))
+  setLocal(LOCAL_ROADMAP_KEY, updated)
+  return { success: true }
+}
+
+export async function deleteRoadmapItem(id) {
+  try {
+    await supabase.from('roadmap_items').delete().eq('id', id)
+  } catch (e) {}
+
+  const current = getLocal(LOCAL_ROADMAP_KEY, DEFAULT_ROADMAP)
+  const updated = current.filter(item => item.id !== id)
+  setLocal(LOCAL_ROADMAP_KEY, updated)
+  return { success: true }
 }
