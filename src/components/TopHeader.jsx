@@ -329,10 +329,14 @@ export default function TopHeader() {
         </button>
         <div className="w-px h-5 bg-base-700/80 mx-0.5" />
         {/* Status pill */}
-        <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-emerald-500 bg-emerald-500/10 border border-emerald-500/25 rounded-full px-2.5 py-0.5 font-semibold">
+        <NavLink
+          to="/status"
+          className="hidden lg:flex items-center gap-1.5 text-[11px] font-mono text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 hover:border-emerald-500/40 rounded-full px-2.5 py-0.5 font-semibold transition-all cursor-pointer"
+          title="Supabase Backend Pause Prevention: Active. Click to view System Status & Keep-Alive telemetry."
+        >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
           Online
-        </div>
+        </NavLink>
         <UserDropdown profile={profile} isAdmin={isAdmin} signOut={signOut} onViewProfile={handleOpenProfile} />
       </div>
 

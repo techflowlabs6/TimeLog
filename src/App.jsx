@@ -21,6 +21,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfService from './pages/TermsOfService'
 import CookiePolicy from './pages/CookiePolicy'
 import { useAuth } from './context/AuthContext'
+import { initKeepAliveService } from './lib/keepAliveService'
 
 const SIDEBAR_KEY = 'timelog_sidebar_collapsed_v1'
 
@@ -111,6 +112,10 @@ function Shell({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    initKeepAliveService()
+  }, [])
+
   return (
     <>
       <AnalyticsTracker />

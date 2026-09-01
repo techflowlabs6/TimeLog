@@ -1,0 +1,39 @@
+name: Supabase Keep-Alive Ping
+
+on:
+  schedule:
+    # Runs daily at 06:00 UTC (prevents Supabase 7-day inactivity project pausing)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  keepalive:
+    name: Heartbeat Ping Supabase Database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Skipping ping: SUPABASE_URL or SUPABASE_ANON_KEY secret not configured."
+            echo "To enable external scheduled keepalive pings, add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in GitHub Repo Settings -> Secrets."
+            exit 0
+          fi
+
+          echo "Sending keepalive heartbeat to Supabase..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${SUPABASE_URL}/rest/v1/system_heartbeat_logs" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{"source": "github_action_cron", "status": "active", "notes": "Scheduled daily automated GitHub Action keepalive"}')
+
+          echo "Heartbeat HTTP response status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Successfully registered keepalive heartbeat in Supabase!"
+          else
+            echo "Note: Status $HTTP_STATUS received. Touching REST API still keeps the Supabase project active."
+          fi
